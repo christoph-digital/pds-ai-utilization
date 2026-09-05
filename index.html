@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDS: AI Utilization</title>
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%230E1B33"/><path d="M28 66 L50 30 L72 66" fill="none" stroke="%2335AAFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50" cy="52" r="6" fill="%23fff"/></svg>'>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap">
+<style>
+/* ═══════════ PDS Dark Theme ═══════════ */
+:root{
+  --bg:#0B1526; --bg2:#0E1B33; --panel:#12233F; --panel2:#16294A;
+  --line:rgba(154,183,220,.14); --line-strong:rgba(154,183,220,.28);
+  --fg:#EAF1F9; --fg-soft:#A9BAD3; --fg-dim:#6E82A0;
+  --marine:#104588; --sky:#35AAFF; --cyan:#3FD3E0; --red:#C00850;
+  --display:"Space Grotesk",sans-serif; --body:"DM Sans",sans-serif;
+  --ease:cubic-bezier(.22,.9,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:calc(16 * var(--pxs,1px))}
+body{background:#060D18;font-family:var(--body);color:var(--fg);overflow:hidden}
+
+/* fixed 16:9 stage — identical on every screen/beamer */
+#stage{position:fixed;inset:0;margin:auto;width:calc(100 * var(--uw,19.2px));height:calc(100 * var(--uh,10.8px));
+  background:var(--bg);overflow:hidden}
+
+/* tech grid backdrop */
+.gridbg{position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(80rem 40rem at 75% -10%, rgba(53,170,255,.10), transparent 60%),
+    radial-gradient(60rem 34rem at -10% 110%, rgba(63,211,224,.07), transparent 60%),
+    linear-gradient(rgba(154,183,220,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(154,183,220,.05) 1px, transparent 1px),
+    linear-gradient(180deg, var(--bg2), var(--bg) 55%);
+  background-size:auto,auto,calc(96 * var(--pxs)) calc(96 * var(--pxs)),calc(96 * var(--pxs)) calc(96 * var(--pxs)),auto}
+.gridbg::after{content:"";position:absolute;inset:0;
+  background-image:radial-gradient(circle, rgba(63,211,224,.5) 1.2px, transparent 1.6px);
+  background-size:calc(96 * var(--pxs)) calc(96 * var(--pxs));
+  mask-image:radial-gradient(60rem 30rem at 80% 10%, #000 0%, transparent 70%);
+  animation:nodetwinkle 6s ease-in-out infinite alternate}
+@keyframes nodetwinkle{from{opacity:.25}to{opacity:.7}}
+
+/* topbar */
+.topbar{position:absolute;top:0;left:0;right:0;height:calc(72 * var(--pxs));z-index:20;
+  display:flex;align-items:center;gap:calc(14 * var(--pxs));padding:0 calc(40 * var(--pxs));
+  border-bottom:1px solid var(--line)}
+.topbar::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky) 55%,var(--cyan))}
+.topbar img{height:calc(26 * var(--pxs));display:block}
+#homeLogo{outline:none;text-decoration:none;border:0}
+#homeLogo:focus,#homeLogo:focus-visible{outline:none}
+.tb-title{margin-left:auto;font-family:var(--display);font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;font-size:calc(12 * var(--pxs));color:var(--fg-dim)}
+
+/* deck */
+#deck{position:absolute;inset:0;display:flex;height:100%;transition:transform .7s var(--ease)}
+.slide{flex:0 0 100%;height:100%;position:relative;overflow:hidden;
+  padding:calc(120 * var(--pxs)) calc(96 * var(--pxs)) calc(64 * var(--pxs))}
+.kicker{display:flex;align-items:center;gap:calc(12 * var(--pxs));
+  font-family:var(--display);font-weight:600;font-size:calc(13 * var(--pxs));
+  letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);margin-bottom:calc(20 * var(--pxs))}
+.kicker::before{content:"";width:calc(34 * var(--pxs));height:2px;background:var(--sky)}
+h1,h2{font-family:var(--display);font-weight:700;line-height:1.08;letter-spacing:-.015em}
+h2{font-size:calc(52 * var(--pxs));margin-bottom:calc(18 * var(--pxs))}
+.grad{background:linear-gradient(100deg,var(--sky) 10%,var(--cyan) 90%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{font-size:calc(21 * var(--pxs));color:var(--fg-soft);max-width:calc(880 * var(--pxs));line-height:1.5}
+
+/* reveals */
+.an{opacity:0;transform:translateY(calc(26 * var(--pxs)));transition:opacity .7s var(--ease),transform .7s var(--ease);
+  transition-delay:calc(var(--i,0) * .12s)}
+.slide.active .an{opacity:1;transform:none}
+
+/* ── Title ── */
+.s-title{display:flex;flex-direction:column;justify-content:center}
+.s-title h1{font-size:calc(104 * var(--pxs));line-height:1.04}
+.t-sub{margin-top:calc(30 * var(--pxs));font-size:calc(23 * var(--pxs));color:var(--fg-soft);max-width:calc(900 * var(--pxs));line-height:1.55}
+.t-chips{display:flex;gap:calc(12 * var(--pxs));margin-top:calc(44 * var(--pxs))}
+.chip{font-family:var(--display);font-weight:600;font-size:calc(15 * var(--pxs));
+  padding:calc(9 * var(--pxs)) calc(18 * var(--pxs));border-radius:999px;
+  border:1px solid var(--line-strong);color:var(--fg-soft);background:rgba(18,35,63,.6)}
+.chip.hot{border-color:var(--sky);color:#fff;background:var(--marine)}
+.t-orbit{position:absolute;right:calc(-160 * var(--pxs));top:50%;transform:translateY(-50%);
+  width:calc(760 * var(--pxs));height:calc(760 * var(--pxs));pointer-events:none;opacity:.9}
+.t-orbit circle,.t-orbit path{fill:none;stroke-linecap:round}
+
+/* ── generic split ── */
+.split{display:grid;grid-template-columns:1.05fr 1fr;gap:calc(70 * var(--pxs));align-items:center;height:100%}
+
+/* ── Reality: usage bars ── */
+.bars{display:flex;flex-direction:column;gap:calc(26 * var(--pxs))}
+.bar{--w:50%}
+.bar .bl{display:flex;justify-content:space-between;font-family:var(--display);font-weight:600;
+  font-size:calc(17 * var(--pxs));margin-bottom:calc(8 * var(--pxs))}
+.bar .bl em{font-style:normal;color:var(--fg-dim);font-weight:500}
+.bar .bt{height:calc(18 * var(--pxs));border-radius:999px;background:rgba(154,183,220,.10);overflow:hidden}
+.bar .bf{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--marine),var(--sky));
+  transition:width 1.1s var(--ease);transition-delay:calc(var(--i,0) * .18s + .3s)}
+.bar.dim .bf{background:rgba(154,183,220,.35)}
+.bar.hot .bf{background:linear-gradient(90deg,var(--red),#E8629C)}
+.slide.active .bar .bf{width:var(--w)}
+.r-punch{margin-top:calc(34 * var(--pxs));font-family:var(--display);font-weight:700;
+  font-size:calc(26 * var(--pxs));color:#fff}
+.r-punch b{color:var(--cyan)}
+
+/* ── Lever cards ── */
+.lever{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(24 * var(--pxs));margin-top:calc(46 * var(--pxs))}
+.lv{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(36 * var(--pxs)) calc(32 * var(--pxs));position:relative;overflow:hidden}
+.lv::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky))}
+.lv.b3::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.lv .n{font-family:var(--display);font-weight:700;font-size:calc(15 * var(--pxs));color:var(--cyan);letter-spacing:.14em}
+.lv h3{font-family:var(--display);font-size:calc(28 * var(--pxs));margin:.5em 0 .45em}
+.lv p{color:var(--fg-soft);font-size:calc(18 * var(--pxs));line-height:1.55}
+.lv svg{position:absolute;right:calc(20 * var(--pxs));top:calc(20 * var(--pxs));width:calc(40 * var(--pxs));height:calc(40 * var(--pxs));
+  fill:none;stroke:var(--sky);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+
+/* ── PossehlGPT window mock ── */
+.pgpt{background:#0F1E3A;border:1px solid var(--line-strong);border-radius:calc(16 * var(--pxs));
+  box-shadow:0 calc(30 * var(--pxs)) calc(70 * var(--pxs)) rgba(0,0,0,.5);overflow:hidden;
+  width:100%;display:flex;flex-direction:column;height:calc(560 * var(--pxs))}
+.pg-head{display:flex;align-items:center;gap:calc(10 * var(--pxs));
+  padding:calc(12 * var(--pxs)) calc(18 * var(--pxs));border-bottom:1px solid var(--line);
+  font-family:var(--display);font-weight:600;font-size:calc(14 * var(--pxs));color:var(--fg-soft)}
+.pg-head .dots{display:flex;gap:6px}
+.pg-head .dots i{width:9px;height:9px;border-radius:50%;background:rgba(154,183,220,.25)}
+.pg-model{margin-left:auto;display:flex;align-items:center;gap:calc(6 * var(--pxs));
+  border:1px solid var(--line-strong);border-radius:999px;padding:calc(4 * var(--pxs)) calc(12 * var(--pxs));
+  font-size:calc(12 * var(--pxs));color:var(--fg-soft)}
+.pg-model b{color:var(--cyan);font-weight:600}
+.pg-body{flex:1;padding:calc(20 * var(--pxs));display:flex;flex-direction:column;gap:calc(14 * var(--pxs));overflow:hidden}
+.msg{max-width:86%;padding:calc(12 * var(--pxs)) calc(16 * var(--pxs));border-radius:calc(13 * var(--pxs));
+  font-size:calc(15.5 * var(--pxs));line-height:1.45;opacity:0;transform:translateY(10px)}
+.msg.user{align-self:flex-end;background:var(--marine);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-bottom-left-radius:4px}
+.msg.bot ul{margin:6px 0 0 1.1em;color:var(--fg-soft)}
+.msg .src{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:calc(12.5 * var(--pxs));
+  color:var(--cyan);border:1px solid rgba(63,211,224,.4);border-radius:999px;padding:3px 10px}
+.slide.active .msg{animation:msgin .5s var(--ease) both}
+.slide.active .msg.m1{animation-delay:.5s}
+.slide.active .msg.m2{animation-delay:1.5s}
+.slide.active .msg.m3{animation-delay:2.6s}
+@keyframes msgin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.pg-typing{align-self:flex-start;display:flex;gap:5px;padding:calc(10 * var(--pxs)) calc(14 * var(--pxs));opacity:0}
+.slide.active .pg-typing{animation:typshow 1s steps(1) .9s both}
+@keyframes typshow{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+.pg-typing i{width:7px;height:7px;border-radius:50%;background:var(--fg-dim);animation:tb .9s ease-in-out infinite}
+.pg-typing i:nth-child(2){animation-delay:.15s}.pg-typing i:nth-child(3){animation-delay:.3s}
+@keyframes tb{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+/* placeholder frame */
+.shot{margin-top:calc(16 * var(--pxs));border:2px dashed rgba(154,183,220,.35);border-radius:calc(14 * var(--pxs));
+  padding:calc(14 * var(--pxs)) calc(18 * var(--pxs));display:flex;align-items:center;gap:calc(12 * var(--pxs));
+  color:var(--fg-dim);font-size:calc(14 * var(--pxs))}
+.shot .play{width:calc(30 * var(--pxs));height:calc(30 * var(--pxs));border-radius:50%;
+  border:2px solid var(--fg-dim);display:grid;place-items:center;flex:none}
+.shot .play::after{content:"";border-left:9px solid var(--fg-dim);border-top:6px solid transparent;
+  border-bottom:6px solid transparent;margin-left:2px}
+
+/* example left column */
+.ex-kick{font-family:var(--display);font-weight:600;color:var(--cyan);letter-spacing:.2em;
+  text-transform:uppercase;font-size:calc(13 * var(--pxs));margin-bottom:calc(14 * var(--pxs))}
+.ex-h{font-family:var(--display);font-weight:700;font-size:calc(44 * var(--pxs));line-height:1.1;margin-bottom:calc(16 * var(--pxs))}
+.ex-p{color:var(--fg-soft);font-size:calc(19 * var(--pxs));line-height:1.55;max-width:calc(620 * var(--pxs))}
+.ex-save{margin-top:calc(30 * var(--pxs));display:inline-flex;align-items:baseline;gap:calc(12 * var(--pxs));
+  border:1px solid var(--line-strong);border-radius:calc(14 * var(--pxs));padding:calc(14 * var(--pxs)) calc(20 * var(--pxs));
+  background:rgba(18,35,63,.7)}
+.ex-save b{font-family:var(--display);font-weight:700;font-size:calc(30 * var(--pxs));
+  background:linear-gradient(100deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.ex-save span{color:var(--fg-soft);font-size:calc(15 * var(--pxs))}
+.ex-tags{display:flex;gap:calc(8 * var(--pxs));margin-top:calc(18 * var(--pxs))}
+.ex-tags .chip{font-size:calc(12.5 * var(--pxs));padding:calc(5 * var(--pxs)) calc(13 * var(--pxs))}
+
+/* ── tools: Skills & Projekte ── */
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:calc(26 * var(--pxs));margin-top:calc(40 * var(--pxs))}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(28 * var(--pxs)) calc(30 * var(--pxs));position:relative;overflow:hidden}
+.tool::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky))}
+.tool.gpt::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.tool-head{display:flex;align-items:center;gap:calc(12 * var(--pxs));margin-bottom:calc(18 * var(--pxs))}
+.tool-head svg{width:calc(30 * var(--pxs));height:calc(30 * var(--pxs));flex:none;
+  fill:none;stroke:var(--cyan);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tool-head h3{font-family:var(--display);font-size:calc(26 * var(--pxs))}
+.tf{display:flex;gap:calc(14 * var(--pxs));padding:calc(13 * var(--pxs)) 0;border-top:1px solid var(--line)}
+.tf b{flex:none;width:calc(170 * var(--pxs));font-family:var(--display);font-weight:600;
+  font-size:calc(17.5 * var(--pxs));color:#fff}
+.tf b i{display:block;font-style:normal;font-size:calc(11.5 * var(--pxs));font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:calc(3 * var(--pxs))}
+.tf p{color:var(--fg-soft);font-size:calc(16 * var(--pxs));line-height:1.5}
+.tools-bridge{margin-top:calc(26 * var(--pxs));display:flex;align-items:center;gap:calc(14 * var(--pxs));
+  border:1px solid var(--line-strong);border-radius:calc(14 * var(--pxs));
+  padding:calc(16 * var(--pxs)) calc(22 * var(--pxs));background:rgba(16,69,136,.25)}
+.tools-bridge b{font-family:var(--display);color:#fff;white-space:nowrap}
+.tools-bridge p{color:var(--fg-soft);font-size:calc(15.5 * var(--pxs));line-height:1.45}
+
+/* mittig zentrierte Board-Folien */
+.slide.mid{display:flex;flex-direction:column;justify-content:center;padding-top:calc(88 * var(--pxs))}
+
+/* dichte Folien */
+.slide.dense{padding-top:calc(96 * var(--pxs))}
+.slide.dense h2{font-size:calc(44 * var(--pxs));margin-bottom:calc(10 * var(--pxs))}
+.slide.dense .lede{font-size:calc(18.5 * var(--pxs))}
+.slide.dense .tools{margin-top:calc(24 * var(--pxs))}
+.slide.dense .tools-bridge{margin-top:calc(14 * var(--pxs));padding:calc(12 * var(--pxs)) calc(20 * var(--pxs))}
+.slide.dense .fw{margin-top:calc(28 * var(--pxs))}
+.slide.dense .fw-line{margin-top:calc(20 * var(--pxs))}
+.slide.dense .tf{padding:calc(10 * var(--pxs)) 0}
+
+/* Kontext-Chips im Chat */
+.ctxrow{display:flex;flex-wrap:wrap;gap:calc(8 * var(--pxs))}
+.ctx{font-size:calc(13 * var(--pxs));color:var(--cyan);border:1px solid rgba(63,211,224,.4);
+  border-radius:999px;padding:calc(5 * var(--pxs)) calc(12 * var(--pxs));opacity:0;transform:scale(.8)}
+.slide.active .ctx{animation:ctxin .45s var(--ease) both}
+.slide.active .ctx.c1{animation-delay:.4s}
+.slide.active .ctx.c2{animation-delay:.8s}
+.slide.active .ctx.c3{animation-delay:1.2s}
+@keyframes ctxin{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+
+/* Voice-Waveform */
+.wave{display:inline-flex;align-items:center;gap:calc(3 * var(--pxs));height:calc(22 * var(--pxs))}
+.wave i{width:calc(3.5 * var(--pxs));border-radius:2px;background:#fff;opacity:.9;
+  animation:wv 1s ease-in-out infinite;height:30%}
+.wave i:nth-child(3n){animation-delay:.15s}
+.wave i:nth-child(3n+1){animation-delay:.3s}
+.wave i:nth-child(4n){animation-delay:.45s}
+.wave i:nth-child(5n){animation-delay:.6s}
+@keyframes wv{0%,100%{height:25%}50%{height:100%}}
+
+/* Flow-Kette */
+.flow{display:flex;flex-direction:column;gap:calc(18 * var(--pxs))}
+.fnode{display:flex;align-items:center;gap:calc(16 * var(--pxs));background:var(--panel);
+  border:1px solid var(--line);border-radius:calc(14 * var(--pxs));
+  padding:calc(16 * var(--pxs)) calc(22 * var(--pxs));position:relative;opacity:0}
+.fnode b{font-family:var(--display);font-size:calc(18 * var(--pxs));flex:none;width:calc(140 * var(--pxs))}
+.fnode p{color:var(--fg-soft);font-size:calc(15.5 * var(--pxs))}
+.fnode .fi{flex:none;width:calc(40 * var(--pxs));height:calc(40 * var(--pxs));border-radius:calc(10 * var(--pxs));
+  display:grid;place-items:center;background:var(--marine);color:#fff;font-size:calc(19 * var(--pxs))}
+.fnode::after{content:"";position:absolute;left:calc(41 * var(--pxs));bottom:calc(-19 * var(--pxs));
+  width:2px;height:calc(19 * var(--pxs));background:linear-gradient(180deg,var(--sky),transparent)}
+.fnode:last-child::after{display:none}
+.slide.active .fnode{animation:fnin .5s var(--ease) both, frun 5.6s ease-in-out infinite;
+  animation-delay:calc(var(--i) * .45s + .4s), calc(var(--i) * .8s + 2.4s)}
+@keyframes fnin{from{opacity:0;transform:translateX(calc(24 * var(--pxs)))}to{opacity:1;transform:none}}
+@keyframes frun{0%,100%{border-color:var(--line);box-shadow:none}
+  8%{border-color:var(--cyan);box-shadow:0 0 calc(22 * var(--pxs)) rgba(63,211,224,.35)}
+  18%{border-color:var(--line);box-shadow:none}}
+
+/* ── math / KPI ── */
+.math{display:flex;align-items:center;gap:calc(28 * var(--pxs));margin-top:calc(50 * var(--pxs))}
+.mcard{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(34 * var(--pxs)) calc(28 * var(--pxs));text-align:center;position:relative;overflow:hidden}
+.mcard::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--marine),var(--sky))}
+.mcard.final::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.mcard .v{font-family:var(--display);font-weight:700;font-size:calc(52 * var(--pxs));font-variant-numeric:tabular-nums}
+.mcard.final .v{font-size:calc(58 * var(--pxs));
+  background:linear-gradient(100deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.mcard .l{margin-top:calc(10 * var(--pxs));font-size:calc(15.5 * var(--pxs));color:var(--fg-soft);line-height:1.4}
+.marrow{font-family:var(--display);font-size:calc(34 * var(--pxs));color:var(--fg-dim);flex:none}
+.mnote{margin-top:calc(30 * var(--pxs));color:var(--fg-dim);font-size:calc(14.5 * var(--pxs))}
+.mnote b{color:var(--fg-soft)}
+
+/* ── framework ── */
+.fw{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(22 * var(--pxs));margin-top:calc(48 * var(--pxs))}
+.fw .st{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(36 * var(--pxs)) calc(32 * var(--pxs));position:relative}
+.fw .st::after{content:"→";position:absolute;right:calc(-20 * var(--pxs));top:50%;transform:translateY(-50%);
+  font-family:var(--display);color:var(--fg-dim);font-size:calc(22 * var(--pxs));z-index:2}
+.fw .st:last-child::after{content:"↺";color:var(--cyan)}
+.fw .n{font-family:var(--display);font-weight:700;font-size:calc(44 * var(--pxs));
+  background:linear-gradient(120deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.fw h3{font-family:var(--display);font-size:calc(25 * var(--pxs));margin:.4em 0 .5em}
+.fw p{color:var(--fg-soft);font-size:calc(17.5 * var(--pxs));line-height:1.55}
+.fw-line{margin-top:calc(36 * var(--pxs));font-family:var(--display);font-weight:600;font-size:calc(23 * var(--pxs));color:var(--fg-soft)}
+.fw-line b{color:#fff}
+
+/* ── CTA ── */
+.s-cta{display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.s-cta h2{font-size:calc(72 * var(--pxs))}
+.cta-sub{font-size:calc(23 * var(--pxs));color:var(--fg-soft);max-width:calc(860 * var(--pxs));line-height:1.55;margin-top:calc(8 * var(--pxs))}
+.cta-row{display:flex;gap:calc(16 * var(--pxs));margin-top:calc(44 * var(--pxs))}
+.btn{font-family:var(--display);font-weight:600;font-size:calc(17 * var(--pxs));
+  padding:calc(14 * var(--pxs)) calc(28 * var(--pxs));border-radius:999px;text-decoration:none}
+.btn.p{background:var(--marine);color:#fff;border:1px solid var(--sky)}
+.btn.g{border:1px solid var(--line-strong);color:var(--fg-soft)}
+.qa{position:absolute;right:calc(90 * var(--pxs));bottom:calc(90 * var(--pxs));
+  font-family:var(--display);font-weight:700;font-size:calc(120 * var(--pxs));color:rgba(154,183,220,.14)}
+
+/* dots nav */
+#dots{position:absolute;right:calc(26 * var(--pxs));top:50%;transform:translateY(-50%);z-index:30;
+  display:flex;flex-direction:column;gap:calc(10 * var(--pxs))}
+#dots button{width:calc(8 * var(--pxs));height:calc(8 * var(--pxs));border-radius:50%;border:0;cursor:pointer;
+  background:rgba(154,183,220,.3);padding:0}
+#dots button.on{background:var(--cyan);transform:scale(1.35)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="gridbg" aria-hidden="true"></div>
+
+  <div class="topbar">
+    <a href="#/1" id="homeLogo" style="display:flex;align-items:center"><img src="assets/pdsf-white.svg" alt="Possehl Digital Service Factory" style="height:calc(30 * var(--pxs))" ></a>
+    <span class="tb-title">AI Utilization</span>
+  </div>
+
+  <div id="deck">
+
+    <!-- 1 · TITLE -->
+    <section class="slide s-title" data-title="Title">
+      <svg class="t-orbit" viewBox="0 0 760 760" aria-hidden="true">
+        <circle cx="380" cy="380" r="300" stroke="rgba(154,183,220,.18)" stroke-width="1.5" stroke-dasharray="3 9"/>
+        <circle cx="380" cy="380" r="210" stroke="rgba(53,170,255,.3)" stroke-width="1.5"/>
+        <circle cx="380" cy="380" r="120" stroke="rgba(63,211,224,.35)" stroke-width="1.5" stroke-dasharray="2 7"/>
+        <circle cx="380" cy="170" r="7" fill="#35AAFF"/>
+        <circle cx="560" cy="450" r="6" fill="#3FD3E0"/>
+        <circle cx="260" cy="380" r="5" fill="#C00850"/>
+      </svg>
+      <div class="kicker an" style="--i:0">Possehl Digital Service Factory · AI Session</div>
+      <h1 class="an" style="--i:1">AI Utilization.<br><span class="grad">Gain efficiency in daily work.</span></h1>
+      <p class="t-sub an" style="--i:2">The one AI lighthouse project is not what decides it. What decides it is whether <b>every single employee</b> uses AI in a way that makes daily work easier, faster — or simply better.</p>
+      <div class="t-chips an" style="--i:3">
+        <span class="chip hot">Possehl GPT</span>
+        <span class="chip">LLM nodes: Claude &amp; GPT</span>
+        <span class="chip">Dokko</span>
+        <span class="chip">Wissenstifter</span>
+        <span class="chip">No-code · on-board tools</span>
+      </div>
+    </section>
+
+    <!-- 2 · REALITY -->
+    <section class="slide" data-title="Reality">
+      <div class="split">
+        <div>
+          <div class="kicker an" style="--i:0">01 · Where we are today</div>
+          <h2 class="an" style="--i:1">Most of us use AI as a<br><span class="grad">better search engine.</span></h2>
+          <p class="lede an" style="--i:2">Those who have access mostly use it to search, phrase e-mails and polish documents. And far from everyone has access at all — usually it is the key users.</p>
+          <div class="r-punch an" style="--i:3">That gap is the opportunity: <b>the biggest wins are still on the table.</b></div>
+        </div>
+        <div class="bars an" style="--i:2">
+          <div class="bar dim" style="--w:78%;--i:0"><div class="bl"><span>Better search engine</span><em>most used</em></div><div class="bt"><div class="bf"></div></div></div>
+          <div class="bar dim" style="--w:64%;--i:1"><div class="bl"><span>E-mails &amp; documents</span><em>daily</em></div><div class="bt"><div class="bf"></div></div></div>
+          <div class="bar dim" style="--w:34%;--i:2"><div class="bl"><span>Access at all</span><em>key users only</em></div><div class="bt"><div class="bf"></div></div></div>
+          <div class="bar hot" style="--w:8%;--i:3"><div class="bl"><span>Skills &amp; agents that automate routine work</span><em>almost nobody</em></div><div class="bt"><div class="bf"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · THE LEVER -->
+    <section class="slide mid" data-title="The lever">
+      <div class="kicker an" style="--i:0">02 · The bigger lever</div>
+      <h2 class="an" style="--i:1">Efficiency does not come from chatting —<br>it comes from <span class="grad">skills &amp; agents.</span></h2>
+      <p class="lede an" style="--i:2">Three levels of AI utilization. Every employee can reach all three — with the no-code, on-board tools we already have.</p>
+      <div class="lever">
+        <div class="lv an" style="--i:3">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+          <div class="n">LEVEL 1</div>
+          <h3>Use it right</h3>
+          <p>Good prompts, the right model for the task, documents as context. Minutes saved every day — by everyone.</p>
+        </div>
+        <div class="lv an" style="--i:4">
+          <svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><rect x="8" y="8" width="8" height="8" rx="2"/></svg>
+          <div class="n">LEVEL 2</div>
+          <h3>Build your own agents</h3>
+          <p>Turn a recurring task into a reusable skill — no code, directly in Possehl GPT. Build once, benefit daily.</p>
+        </div>
+        <div class="lv b3 an" style="--i:5">
+          <svg viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-8"/><path d="M14 7h6v6"/></svg>
+          <div class="n">LEVEL 3</div>
+          <h3>Tap into existing agents</h3>
+          <p>Agents that already take over time-consuming routine work — you review the result instead of doing the work.</p>
+        </div>
+      </div>
+      <div class="fw-line an" style="--i:6">Routine work runs itself. <b>You review — you decide.</b></div>
+    </section>
+
+    <!-- 4 · EXAMPLE 1: MEETING WRAP-UP -->
+    <section class="slide" data-title="Example 1">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">Example 1 · Possehl GPT skill</div>
+          <div class="ex-h an" style="--i:1">The meeting<br>wrap-up agent.</div>
+          <p class="ex-p an" style="--i:2">Drop in the transcript — the agent returns structured minutes, clear action items with owners, and a drafted follow-up e-mail. Built once as a no-code skill, used after every meeting.</p>
+          <div class="ex-save an" style="--i:3"><b>~30 min</b><span>saved per meeting — minutes &amp; follow-ups done</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Possehl GPT</span><span class="chip">Claude node</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Possehl GPT
+              <span class="pg-model">Model: <b>Claude</b> ▾</span></div>
+            <div class="pg-body">
+              <div class="msg user m1">/meeting-wrapup — here is the transcript of today’s steering call (42 min) 📎</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m2">Done. Here is your wrap-up:<ul><li><b>Minutes</b> — 6 topics, decisions highlighted</li><li><b>Action items</b> — 5 tasks with owners &amp; due dates</li><li><b>Follow-up e-mail</b> — drafted, ready to send</li></ul></div>
+              <div class="msg user m3">Perfect — send the e-mail to the project channel.</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — screen recording: Building this skill live in Possehl GPT (no code)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · EXAMPLE 2: KNOWLEDGE / DOKKO -->
+    <section class="slide" data-title="Example 2">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">Example 2 · Dokko</div>
+          <div class="ex-h an" style="--i:1">Company knowledge<br>that answers back.</div>
+          <p class="ex-p an" style="--i:2">Contracts, manuals, policies — thousands of pages. Dokko reads them completely and answers with the source attached. Read deep. Act fast. Answers in seconds instead of search hours.</p>
+          <div class="ex-save an" style="--i:3"><b>Seconds</b><span>instead of search hours — backed by sources, not guesses</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Dokko</span><span class="chip">Works inside your daily tools</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Dokko
+              <span class="pg-model">Knowledge: <b>Contracts &amp; manuals</b></span></div>
+            <div class="pg-body">
+              <div class="msg user m1">What notice period applies in our maintenance contract with supplier K. — and who has to be informed?</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m2"><b>3 months to quarter-end.</b> Written notice to the supplier’s service office; internally, procurement and the plant manager must be informed.<br><span class="src">📄 Source: Maintenance contract K., §9 (2) — p. 14</span></div>
+              <div class="msg user m3">Draft the notification for procurement.</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — screenshot: Dokko answer with source citation in the live system</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · EXAMPLE 3: WEEKLY REPORT -->
+    <section class="slide" data-title="Example 3">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">Example 3 · Possehl GPT agent</div>
+          <div class="ex-h an" style="--i:1">The weekly report<br>writes itself.</div>
+          <p class="ex-p an" style="--i:2">Every Friday the agent collects the week’s figures and notes, drafts the status report in your structure and flags what needs attention. You review, adjust one line, send.</p>
+          <div class="ex-save an" style="--i:3"><b>~2 h</b><span>saved per week — the routine part of reporting, automated</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Possehl GPT</span><span class="chip">GPT node</span><span class="chip">Scheduled agent</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Possehl GPT
+              <span class="pg-model">Agent: <b>Weekly report</b> · Fridays 14:00</span></div>
+            <div class="pg-body">
+              <div class="msg bot m1">Your weekly report is ready:<ul><li>Production &amp; order status — <b>on track</b></li><li>2 topics flagged for attention</li><li>Draft in your template, ready for review</li></ul></div>
+              <div class="msg user m2">Change the outlook — add next week’s audit.</div>
+              <div class="msg bot m3">Updated. The report is ready to send. ✓</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — animation: Agent run from data sources to the finished report</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · EXAMPLE 4: WISSENSTIFTER -->
+    <section class="slide" data-title="Beispiel 4">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">Example 4 · Wissenstifter</div>
+          <div class="ex-h an" style="--i:1">Experience knowledge —<br>before it walks out.</div>
+          <p class="ex-p an" style="--i:2">Experienced colleagues carry knowledge in their heads that is written down nowhere. Wissenstifter runs AI-guided interviews, asks the right follow-up questions — and turns them into structured, searchable knowledge documents.</p>
+          <div class="ex-save an" style="--i:3"><b>Knowledge stays</b><span>documented &amp; searchable — before experience leaves the building</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Wissenstifter</span><span class="chip">AI interview</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Wissenstifter
+              <span class="pg-model">Interview: <b>Maintenance · Line 3</b></span></div>
+            <div class="pg-body">
+              <div class="msg bot m1">You mentioned the machine starts up differently in the cold — how do you know when it gets critical?</div>
+              <div class="msg user m2">By the sound of the hydraulics in the first minutes. If it sounds “harsh”, run the warm-up program first.</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m3">Captured in the knowledge document <b>“Start-up at low temperatures”</b> — step 3 of 7. ✓</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — excerpt: AI interview and the finished knowledge document</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · SKILLS & PROJEKTE -->
+    <section class="slide mid dense" data-title="Skills &amp; Projekte">
+      <div class="kicker an" style="--i:0">03 · Start yourself</div>
+      <h2 class="an" style="--i:1">Skills &amp; projects —<br><span class="grad">how to start today.</span></h2>
+      <p class="lede an" style="--i:2">It is not the model that makes the difference — it is the context you give it. Use these building blocks and you stop starting every chat from zero.</p>
+      <div class="tools">
+        <div class="tool an" style="--i:3">
+          <div class="tool-head">
+            <svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.3L20 10l-5.8 1.7L12 17l-2.2-5.3L4 10l5.8-1.7z"/></svg>
+            <h3>Claude</h3>
+          </div>
+          <div class="tf"><b><i>Projects</i>Context that stays</b><p>One project per topic: Store instructions and documents once — every new chat starts with full context instead of from zero.</p></div>
+          <div class="tf"><b><i>Skills</i>Knowledge that works</b><p>Reusable playbooks, e.g. “our proposal template”. Claude pulls the right skill automatically as soon as the task fits.</p></div>
+          <div class="tf"><b><i>Memory</i>Context that grows</b><p>Claude remembers preferences and project state across chats — less repetition, more continuity.</p></div>
+        </div>
+        <div class="tool gpt an" style="--i:4">
+          <div class="tool-head">
+            <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 1 1-3.1-6.3L21 5l-.6 3.4A8 8 0 0 1 21 12z"/><circle cx="9" cy="12" r=".8"/><circle cx="12.5" cy="12" r=".8"/><circle cx="16" cy="12" r=".8"/></svg>
+            <h3>ChatGPT</h3>
+          </div>
+          <div class="tf"><b><i>Projects</i>Everything in one place</b><p>Chats, files and instructions bundled per topic — context is preserved across all conversations.</p></div>
+          <div class="tf"><b><i>Custom GPTs</i>Your own assistant</b><p>An assistant with fixed instructions and its own knowledge — configure once, share with the whole team.</p></div>
+          <div class="tf"><b><i>Instructions</i>Set once</b><p>Store role, working style and tone centrally — it works in every chat. The cheapest quality jump there is.</p></div>
+        </div>
+      </div>
+      <div class="tools-bridge an" style="--i:5">
+        <b>And in Possehl GPT?</b>
+        <p>The same principle with on-board tools: Build skills and agents no-code — centrally managed, secure, with Claude &amp; GPT nodes.</p>
+      </div>
+      <div class="tools-bridge an" style="--i:6;background:rgba(63,211,224,.08);border-color:rgba(63,211,224,.4)">
+        <b>From skill to enterprise app?</b>
+        <p>Simplifier: Low-code apps with integration into your core systems (e.g. SAP) — from our own portfolio. simplifier.io</p>
+      </div>
+    </section>
+
+    <!-- PRAXIS A: MS 365 ADD-INS -->
+    <section class="slide" data-title="Praxis: MS 365">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">04 · From daily practice</div>
+          <div class="ex-h an" style="--i:1">AI right inside Outlook,<br>Word &amp; PowerPoint.</div>
+          <p class="ex-p an" style="--i:2">Not a tenth tool on the side — the AI works inside the add-ins of everyday MS 365: Summarize threads, draft replies, write formulas, improve slides.</p>
+          <div class="ex-save an" style="--i:3"><b>No copy-paste</b><span>AI where the work happens anyway</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Claude Add-ins</span><span class="chip">Outlook · Word · Excel · PowerPoint</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Outlook
+              <span class="pg-model">Add-in: <b>Claude</b></span></div>
+            <div class="pg-body">
+              <div class="msg user m1">Summarize the thread and draft a reply to all.</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m2"><b>Summary (5 mails):</b> Delivery date is shifting, spare part is on its way, customer is waiting for a reply.<br>Reply draft is ready — tone: friendly, clear.</div>
+              <div class="msg user m3">Shorter — and propose Tuesday as the date.</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — screen recording: Claude add-in in Outlook</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRAXIS B: KONTEXT-BAUSTEINE -->
+    <section class="slide" data-title="Praxis: Kontext">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">04 · From daily practice</div>
+          <div class="ex-h an" style="--i:1">Set up once —<br>works in every chat.</div>
+          <p class="ex-p an" style="--i:2">Role and style as user preferences, fixed spellings as a correction list, recurring structures as templates — e.g. the 5-block minutes with WHAT – WHO – BY WHEN.</p>
+          <div class="ex-save an" style="--i:3"><b>~90&nbsp;%</b><span>less rework on minutes &amp; transcripts</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">User Preferences</span><span class="chip">Correction list</span><span class="chip">Prompt templates</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Possehl GPT
+              <span class="pg-model">Context: <b>Loaded</b></span></div>
+            <div class="pg-body">
+              <div class="ctxrow"><span class="ctx c1">👤 Profile &amp; style ✓</span><span class="ctx c2">✏️ Correction list ✓</span><span class="ctx c3">📋 Template: 5-block minutes ✓</span></div>
+              <div class="msg user m2">Turn the transcript into the minutes for the steering call.</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m3">Minutes created — <b>structure, spellings and tone all match.</b><br>Next steps with WHAT – WHO – BY WHEN. Ready to send. ✓</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — screenshot: Stored preferences &amp; templates</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRAXIS C: KURZBEFEHLE & AUTOMATION -->
+    <section class="slide" data-title="Praxis: Automation">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">04 · From daily practice</div>
+          <div class="ex-h an" style="--i:1">One shortcut —<br>and the chain runs.</div>
+          <p class="ex-p an" style="--i:2">Apple Shortcuts kick things off, n8n orchestrates in the background: A dictation becomes finished minutes, news becomes the morning briefing, e-mail and calendar routines run automatically.</p>
+          <div class="ex-save an" style="--i:3"><b>In the background</b><span>routine runs before the day begins</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Shortcuts</span><span class="chip">n8n</span><span class="chip">LLM nodes</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="flow">
+            <div class="fnode" style="--i:0"><span class="fi">⌘</span><b>Shortcut</b><p>Dictation on Watch or iPhone</p></div>
+            <div class="fnode" style="--i:1"><span class="fi">⚙</span><b>n8n</b><p>Transcribes &amp; structures</p></div>
+            <div class="fnode" style="--i:2"><span class="fi">✦</span><b>LLM node</b><p>5-block minutes are created</p></div>
+            <div class="fnode" style="--i:3"><span class="fi">✉</span><b>Inbox</b><p>Draft is waiting</p></div>
+          </div>
+          <div class="shot" style="margin-top:calc(24 * var(--pxs))"><span class="play"></span> Placeholder — animation/recording: Shortcut triggers the n8n flow</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRAXIS D: VOICE -->
+    <section class="slide" data-title="Praxis: Voice">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">04 · From daily practice</div>
+          <div class="ex-h an" style="--i:1">Speaking is faster<br>than typing.</div>
+          <p class="ex-p an" style="--i:2">The underrated lever: Work more with your voice. Dictate instead of typing — on the go, between meetings, right after the call. The AI turns the spoken thought into the finished e-mail, note or task.</p>
+          <div class="ex-save an" style="--i:3"><b>~3×</b><span>faster spoken than typed — the AI takes care of the form</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Dictation</span><span class="chip">Whisper</span><span class="chip">AI recorder</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Voice
+              <span class="pg-model">Input: <b>Dictation · on the go</b></span></div>
+            <div class="pg-body">
+              <div class="msg user m1" style="display:flex;align-items:center;gap:calc(10 * var(--pxs))">🎙<span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+              <div class="msg user m1">“Quick mail to the team: Tuesday is confirmed, I’ll send the agenda tomorrow morning, questions straight to me …”</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m2">E-mail drafted — <b>subject, greeting, three clear sentences, sign-off.</b> Ready to send. ✓</div>
+              <div class="msg user m3">And put the date straight into the calendar.</div>
+            </div>
+          </div>
+          <div class="shot"><span class="play"></span> Placeholder — recording: Dictation on the iPhone → finished e-mail</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · THE MATH -->
+    <section class="slide mid" data-title="The math">
+      <div class="kicker an" style="--i:0">05 · What it’s worth</div>
+      <h2 class="an" style="--i:1">Small savings per person.<br><span class="grad">A big number for the company.</span></h2>
+      <p class="lede an" style="--i:2">An illustrative calculation — deliberately conservative:</p>
+      <div class="math">
+        <div class="mcard an" style="--i:3"><div class="v"><span data-count="45">0</span> min</div><div class="l">of routine work per day<br>that AI can take over</div></div>
+        <div class="marrow an" style="--i:4">→</div>
+        <div class="mcard an" style="--i:4"><div class="v"><span data-count="4">0</span> h</div><div class="l">per employee<br>per week</div></div>
+        <div class="marrow an" style="--i:5">→</div>
+        <div class="mcard an" style="--i:5"><div class="v"><span data-count="180">0</span> h</div><div class="l">per employee<br>per year</div></div>
+        <div class="marrow an" style="--i:6">→</div>
+        <div class="mcard final an" style="--i:6"><div class="v"><span data-count="18000">0</span> h</div><div class="l"><b>per year at 100 employees</b><br>— time invested better</div></div>
+      </div>
+      <p class="mnote an" style="--i:7">An illustrative example. <b>Your numbers will differ — so measure them:</b> Every skill and agent carries a simple “hours saved” estimate.</p>
+    </section>
+
+    <!-- 8 · FRAMEWORK -->
+    <section class="slide mid" data-title="Framework">
+      <div class="kicker an" style="--i:0">06 · How everyone gets there</div>
+      <h2 class="an" style="--i:1">A pragmatic framework<br><span class="grad">that actually works.</span></h2>
+      <div class="fw">
+        <div class="st an" style="--i:2"><div class="n">01</div><h3>Access</h3><p>Every employee gets a seat — not just key users. Safe, governed, on-board: Possehl GPT with Claude &amp; GPT nodes.</p></div>
+        <div class="st an" style="--i:3"><div class="n">02</div><h3>Enable</h3><p>Short, practical enablement: Use it right on real daily tasks — not tool training, but work training.</p></div>
+        <div class="st an" style="--i:4"><div class="n">03</div><h3>Build</h3><p>Everyone turns one routine task into a no-code skill or agent. One task per person is all it takes to start.</p></div>
+        <div class="st an" style="--i:5"><div class="n">04</div><h3>Share &amp; scale</h3><p>A shared skill library, champions in every team — and every agent carries its “hours saved” number.</p></div>
+      </div>
+      <div class="fw-line an" style="--i:6">Not a lighthouse. <b>A habit — for every single employee.</b></div>
+    </section>
+
+    <!-- FAHRPLAN -->
+    <section class="slide mid dense" data-title="Fahrplan">
+      <div class="kicker an" style="--i:0">07 · Your roadmap</div>
+      <h2 class="an" style="--i:1">Everyone needs <span class="grad">a roadmap.</span></h2>
+      <p class="lede an" style="--i:2">Four questions are enough to start — today, for everyone:</p>
+      <div class="fw">
+        <div class="st an" style="--i:3"><div class="n">01</div><h3>What is hardest every day?</h3><p>What keeps eating time — and annoys you? That is your first candidate.</p></div>
+        <div class="st an" style="--i:4"><div class="n">02</div><h3>What could automation look like?</h3><p>What would the result be if the task did itself? A rough sketch of the target picture is enough.</p></div>
+        <div class="st an" style="--i:5"><div class="n">03</div><h3>Which tools are available?</h3><p>Possehl GPT, Claude, ChatGPT, Dokko, n8n — the right tool is usually already on board.</p></div>
+        <div class="st an" style="--i:6"><div class="n">04</div><h3>Ask the AI how to do it.</h3><p>The simplest trick: Describe the task to the AI and ask it how to automate itself.</p></div>
+      </div>
+      <div class="fw-line an" style="--i:7">No big project needed. <b>Four questions — and your first skill is live.</b></div>
+    </section>
+
+    <!-- 9 · CTA -->
+    <section class="slide s-cta" data-title="Q&A">
+      <div class="kicker an" style="--i:0">Possehl Digital Service Factory</div>
+      <h2 class="an" style="--i:1">Start with <span class="grad">one routine task.</span><br>This week.</h2>
+      <p class="cta-sub an" style="--i:2">We bring the framework, the on-board tools and the examples — you bring one task you never want to do manually again. Let’s talk.</p>
+      <div class="cta-row an" style="--i:3">
+        <a class="btn p" href="https://possehl-digital.services" target="_blank" rel="noopener">possehl-digital.services ↗</a>
+        <a class="btn g" href="https://dokko.ai" target="_blank" rel="noopener">dokko.ai ↗</a>
+      </div>
+      <div class="qa" aria-hidden="true">Q&amp;A</div>
+    </section>
+
+  </div>
+  <div id="dots"></div>
+</div>
+
+<script>
+(function(){
+/* fixed 16:9 fit */
+function fitStage(){
+  const s=Math.min(innerWidth/1920, innerHeight/1080);
+  const r=document.documentElement;
+  r.style.setProperty("--uw",(19.2*s)+"px");
+  r.style.setProperty("--uh",(10.8*s)+"px");
+  r.style.setProperty("--pxs",s+"px");
+}
+addEventListener("resize",fitStage);fitStage();
+
+const deck=document.getElementById("deck");
+const slides=[...document.querySelectorAll(".slide")];
+const dotsEl=document.getElementById("dots");
+let cur=-1;
+
+slides.forEach((s,i)=>{
+  const b=document.createElement("button");
+  b.setAttribute("aria-label",s.dataset.title||("Slide "+(i+1)));
+  b.addEventListener("click",()=>go(i));
+  dotsEl.appendChild(b);
+});
+const dots=[...dotsEl.children];
+
+function countTo(el,to){
+  const t0=performance.now(),dur=1400;
+  (function tick(t){
+    const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(to*e).toLocaleString("en-US");
+    if(p<1)requestAnimationFrame(tick);
+  })(t0);
+  requestAnimationFrame(function tick2(t){});
+}
+
+function go(n){
+  n=Math.max(0,Math.min(slides.length-1,n));
+  if(n===cur)return;
+  cur=n;
+  deck.style.transform=`translate3d(calc(${-n*100} * var(--uw)),0,0)`;
+  slides.forEach((s,i)=>s.classList.toggle("active",i===n));
+  dots.forEach((d,i)=>d.classList.toggle("on",i===n));
+  location.hash="#/"+(n+1);
+  slides[n].querySelectorAll("[data-count]").forEach(el=>{
+    if(el.dataset.done==="1")return;el.dataset.done="1";
+    const to=+el.dataset.count;
+    const t0=performance.now(),dur=1500;
+    (function tick(t){
+      const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+      el.textContent=Math.round(to*e).toLocaleString("en-US");
+      if(p<1)requestAnimationFrame(tick);
+    })(t0);
+  });
+}
+function next(){go(cur+1)}
+function prev(){go(cur-1)}
+
+addEventListener("keydown",e=>{
+  if(["ArrowRight","ArrowDown","PageDown"," ","Spacebar"].includes(e.key)){e.preventDefault();next();}
+  if(["ArrowLeft","ArrowUp","PageUp"].includes(e.key)){e.preventDefault();prev();}
+  if(e.key==="Home")go(0);
+  if(e.key==="End")go(slides.length-1);
+});
+document.getElementById("homeLogo").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();go(0);});
+document.getElementById("stage").addEventListener("click",e=>{
+  if(e.target.closest("a,button"))return;
+  next();
+});
+
+const m=location.hash.match(/#\/(\d+)/);
+go(m?+m[1]-1:0);
+})();
+</script>
+</body>
+</html>
