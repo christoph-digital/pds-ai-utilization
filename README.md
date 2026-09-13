@@ -2,7 +2,7 @@
 
 Vortrags-Website der **Possehl Digital Service Factory** (Session „AI Utilization"). 16 Folien, Englisch, dunkles PDS-Design. Eine einzige HTML-Datei — kein Build, keine Abhängigkeiten.
 
-**Live:** https://pds-ai-utilization-production.up.railway.app
+**Live:** https://pds-ai.app.possehl.digital (Fallback: https://pds-ai-utilization-production-0be1.up.railway.app)
 
 ## Bedienung
 
