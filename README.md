@@ -55,3 +55,15 @@ Caddyfile
 ## Kontakt
 
 Christoph Haß · chass@possehl.de
+
+## Stand 2026-09-13: Motion-Ebene, eingebettete Schriften, Build
+
+- **`index.html`** ist jetzt eine gebaute, eigenständige Datei (Schriften + Logo eingebettet, ~700 KB): sieht offline und auf jedem Bildschirm identisch aus. **Nicht direkt editieren.**
+- **Quelle:** `source/index.html` (lesbar, lädt Schriften von Google). Texte hier ändern, dann bauen:
+
+```bash
+python3 source/build.py
+```
+
+  erzeugt `index.html` (Deploy/Präsentation) und `artifact.html` (ASCII-only-Variante für claude.ai-Artifacts).
+- Neu: Animationen (Titel-Orbit-System auf Canvas, Wort-Reveal, Karten-Walks, KPI-Punkte-Grid, Task-Liste auf der Q&A-Folie), Taste **F** = Vollbild, Mauszeiger verschwindet nach 2,5 s Ruhe.

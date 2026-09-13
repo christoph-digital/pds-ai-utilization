@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDS: AI Utilization</title>
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%230E1B33"/><path d="M28 66 L50 30 L72 66" fill="none" stroke="%2335AAFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50" cy="52" r="6" fill="%23fff"/></svg>'>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap">
+<style>
+/* ═══════════ PDS Dark Theme ═══════════ */
+:root{
+  --bg:#0B1526; --bg2:#0E1B33; --panel:#12233F; --panel2:#16294A;
+  --line:rgba(154,183,220,.14); --line-strong:rgba(154,183,220,.28);
+  --fg:#EAF1F9; --fg-soft:#A9BAD3; --fg-dim:#6E82A0;
+  --marine:#104588; --sky:#35AAFF; --cyan:#3FD3E0; --red:#C00850;
+  --display:"Space Grotesk",sans-serif; --body:"DM Sans",sans-serif;
+  --ease:cubic-bezier(.22,.9,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:calc(16 * var(--pxs,1px))}
+body{background:#060D18;font-family:var(--body);color:var(--fg);overflow:hidden}
+
+/* fixed 16:9 stage — identical on every screen/beamer */
+#stage{position:fixed;inset:0;margin:auto;width:calc(100 * var(--uw,19.2px));height:calc(100 * var(--uh,10.8px));
+  background:var(--bg);overflow:hidden}
+
+/* tech grid backdrop */
+.gridbg{position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(80rem 40rem at 75% -10%, rgba(53,170,255,.10), transparent 60%),
+    radial-gradient(60rem 34rem at -10% 110%, rgba(63,211,224,.07), transparent 60%),
+    linear-gradient(rgba(154,183,220,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(154,183,220,.05) 1px, transparent 1px),
+    linear-gradient(180deg, var(--bg2), var(--bg) 55%);
+  background-size:auto,auto,calc(96 * var(--pxs)) calc(96 * var(--pxs)),calc(96 * var(--pxs)) calc(96 * var(--pxs)),auto}
+.gridbg::after{content:"";position:absolute;inset:0;
+  background-image:radial-gradient(circle, rgba(63,211,224,.5) 1.2px, transparent 1.6px);
+  background-size:calc(96 * var(--pxs)) calc(96 * var(--pxs));
+  mask-image:radial-gradient(60rem 30rem at 80% 10%, #000 0%, transparent 70%);
+  animation:nodetwinkle 6s ease-in-out infinite alternate}
+@keyframes nodetwinkle{from{opacity:.25}to{opacity:.7}}
+
+/* topbar */
+.topbar{position:absolute;top:0;left:0;right:0;height:calc(72 * var(--pxs));z-index:20;
+  display:flex;align-items:center;gap:calc(14 * var(--pxs));padding:0 calc(40 * var(--pxs));
+  border-bottom:1px solid var(--line)}
+.topbar::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky) 55%,var(--cyan))}
+.topbar img{height:calc(26 * var(--pxs));display:block}
+#homeLogo{outline:none;text-decoration:none;border:0}
+#homeLogo:focus,#homeLogo:focus-visible{outline:none}
+.tb-title{margin-left:auto;font-family:var(--display);font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;font-size:calc(12 * var(--pxs));color:var(--fg-dim)}
+
+/* deck */
+#deck{position:absolute;inset:0;display:flex;height:100%;transition:transform .7s var(--ease)}
+.slide{flex:0 0 100%;height:100%;position:relative;overflow:hidden;
+  padding:calc(120 * var(--pxs)) calc(96 * var(--pxs)) calc(64 * var(--pxs))}
+.kicker{display:flex;align-items:center;gap:calc(12 * var(--pxs));
+  font-family:var(--display);font-weight:600;font-size:calc(13 * var(--pxs));
+  letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);margin-bottom:calc(20 * var(--pxs))}
+.kicker::before{content:"";width:calc(34 * var(--pxs));height:2px;background:var(--sky)}
+h1,h2{font-family:var(--display);font-weight:700;line-height:1.08;letter-spacing:-.015em}
+h2{font-size:calc(52 * var(--pxs));margin-bottom:calc(18 * var(--pxs))}
+.grad{background:linear-gradient(100deg,var(--sky) 10%,var(--cyan) 90%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{font-size:calc(21 * var(--pxs));color:var(--fg-soft);max-width:calc(880 * var(--pxs));line-height:1.5}
+
+/* reveals */
+.an{opacity:0;transform:translateY(calc(26 * var(--pxs)));
+  transition:opacity .7s var(--ease),transform .7s var(--ease),border-color .35s,box-shadow .35s,background-color .35s;
+  transition-delay:calc(var(--i,0) * .12s),calc(var(--i,0) * .12s),0s,0s,0s}
+.slide.active .an{opacity:1;transform:none}
+
+/* ── Title ── */
+.s-title{display:flex;flex-direction:column;justify-content:center}
+.s-title h1{font-size:calc(104 * var(--pxs));line-height:1.04}
+.t-sub{margin-top:calc(30 * var(--pxs));font-size:calc(23 * var(--pxs));color:var(--fg-soft);max-width:calc(900 * var(--pxs));line-height:1.55}
+.t-chips{display:flex;gap:calc(12 * var(--pxs));margin-top:calc(44 * var(--pxs))}
+.chip{font-family:var(--display);font-weight:600;font-size:calc(15 * var(--pxs));
+  padding:calc(9 * var(--pxs)) calc(18 * var(--pxs));border-radius:999px;
+  border:1px solid var(--line-strong);color:var(--fg-soft);background:rgba(18,35,63,.6)}
+.chip.hot{border-color:var(--sky);color:#fff;background:var(--marine)}
+.t-orbit{position:absolute;right:calc(-50 * var(--pxs));top:calc(150 * var(--pxs));
+  width:calc(1000 * var(--pxs));height:calc(1000 * var(--pxs));pointer-events:none;display:block;z-index:0}
+.s-title>.kicker,.s-title>h1,.s-title>.t-sub,.s-title>.t-chips{position:relative;z-index:2}
+
+/* ── generic split ── */
+.split{display:grid;grid-template-columns:1.05fr 1fr;gap:calc(70 * var(--pxs));align-items:center;height:100%}
+
+/* ── Reality: usage bars ── */
+.bars{display:flex;flex-direction:column;gap:calc(26 * var(--pxs))}
+.bar{--w:50%}
+.bar .bl{display:flex;justify-content:space-between;font-family:var(--display);font-weight:600;
+  font-size:calc(17 * var(--pxs));margin-bottom:calc(8 * var(--pxs))}
+.bar .bl em{font-style:normal;color:var(--fg-dim);font-weight:500}
+.bar .bt{height:calc(18 * var(--pxs));border-radius:999px;background:rgba(154,183,220,.10);overflow:hidden}
+.bar .bf{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--marine),var(--sky));
+  transition:width 1.1s var(--ease);transition-delay:calc(var(--i,0) * .18s + .3s)}
+.bar.dim .bf{background:rgba(154,183,220,.35)}
+.bar.hot .bf{background:linear-gradient(90deg,var(--red),#E8629C)}
+.slide.active .bar .bf{width:var(--w)}
+.r-punch{margin-top:calc(34 * var(--pxs));font-family:var(--display);font-weight:700;
+  font-size:calc(26 * var(--pxs));color:#fff}
+.r-punch b{color:var(--cyan)}
+
+/* ── Lever cards ── */
+.lever{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(24 * var(--pxs));margin-top:calc(46 * var(--pxs))}
+.lv{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(36 * var(--pxs)) calc(32 * var(--pxs));position:relative;overflow:hidden}
+.lv::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky))}
+.lv.b3::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.lv .n{font-family:var(--display);font-weight:700;font-size:calc(15 * var(--pxs));color:var(--cyan);letter-spacing:.14em}
+.lv h3{font-family:var(--display);font-size:calc(28 * var(--pxs));margin:.5em 0 .45em}
+.lv p{color:var(--fg-soft);font-size:calc(18 * var(--pxs));line-height:1.55}
+.lv svg{position:absolute;right:calc(20 * var(--pxs));top:calc(20 * var(--pxs));width:calc(40 * var(--pxs));height:calc(40 * var(--pxs));
+  fill:none;stroke:var(--sky);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+
+/* ── PossehlGPT window mock ── */
+.pgpt{background:#0F1E3A;border:1px solid var(--line-strong);border-radius:calc(16 * var(--pxs));
+  box-shadow:0 calc(30 * var(--pxs)) calc(70 * var(--pxs)) rgba(0,0,0,.5);overflow:hidden;
+  width:100%;display:flex;flex-direction:column;height:calc(560 * var(--pxs))}
+.pg-head{display:flex;align-items:center;gap:calc(10 * var(--pxs));
+  padding:calc(12 * var(--pxs)) calc(18 * var(--pxs));border-bottom:1px solid var(--line);
+  font-family:var(--display);font-weight:600;font-size:calc(14 * var(--pxs));color:var(--fg-soft)}
+.pg-head .dots{display:flex;gap:6px}
+.pg-head .dots i{width:9px;height:9px;border-radius:50%;background:rgba(154,183,220,.25)}
+.pg-model{margin-left:auto;display:flex;align-items:center;gap:calc(6 * var(--pxs));
+  border:1px solid var(--line-strong);border-radius:999px;padding:calc(4 * var(--pxs)) calc(12 * var(--pxs));
+  font-size:calc(12 * var(--pxs));color:var(--fg-soft)}
+.pg-model b{color:var(--cyan);font-weight:600}
+.pg-body{flex:1;padding:calc(20 * var(--pxs));display:flex;flex-direction:column;gap:calc(14 * var(--pxs));overflow:hidden}
+.msg{max-width:86%;padding:calc(12 * var(--pxs)) calc(16 * var(--pxs));border-radius:calc(13 * var(--pxs));
+  font-size:calc(15.5 * var(--pxs));line-height:1.45;opacity:0;transform:translateY(10px)}
+.msg.user{align-self:flex-end;background:var(--marine);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-bottom-left-radius:4px}
+.msg.bot ul{margin:6px 0 0 1.1em;color:var(--fg-soft)}
+.msg .src{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:calc(12.5 * var(--pxs));
+  color:var(--cyan);border:1px solid rgba(63,211,224,.4);border-radius:999px;padding:3px 10px}
+.slide.active .msg{animation:msgin .5s var(--ease) both}
+.slide.active .msg.m1{animation-delay:.5s}
+.slide.active .msg.m2{animation-delay:1.5s}
+.slide.active .msg.m3{animation-delay:2.6s}
+@keyframes msgin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.pg-typing{align-self:flex-start;display:flex;gap:5px;padding:calc(10 * var(--pxs)) calc(14 * var(--pxs));opacity:0}
+.slide.active .pg-typing{animation:typshow 1s steps(1) .9s both}
+@keyframes typshow{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+.pg-typing i{width:7px;height:7px;border-radius:50%;background:var(--fg-dim);animation:tb .9s ease-in-out infinite}
+.pg-typing i:nth-child(2){animation-delay:.15s}.pg-typing i:nth-child(3){animation-delay:.3s}
+@keyframes tb{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+/* E-Mail-Entwurf im Chat-Mock */
+.mail{margin-top:calc(10 * var(--pxs));border:1px solid var(--line);border-radius:calc(10 * var(--pxs));
+  background:rgba(11,21,38,.65);overflow:hidden}
+.mail-sub{padding:calc(10 * var(--pxs)) calc(14 * var(--pxs));border-bottom:1px solid var(--line);
+  font-family:var(--display);font-weight:600;font-size:calc(14.5 * var(--pxs));color:#fff}
+.mail-sub i{display:block;font-style:normal;font-size:calc(11 * var(--pxs));font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:calc(3 * var(--pxs))}
+.mail-body{padding:calc(12 * var(--pxs)) calc(14 * var(--pxs));font-size:calc(14 * var(--pxs));
+  line-height:1.5;color:var(--fg-soft)}
+
+/* placeholder frame */
+.shot{margin-top:calc(16 * var(--pxs));border:2px dashed rgba(154,183,220,.35);border-radius:calc(14 * var(--pxs));
+  padding:calc(14 * var(--pxs)) calc(18 * var(--pxs));display:flex;align-items:center;gap:calc(12 * var(--pxs));
+  color:var(--fg-dim);font-size:calc(14 * var(--pxs))}
+.shot .play{width:calc(30 * var(--pxs));height:calc(30 * var(--pxs));border-radius:50%;
+  border:2px solid var(--fg-dim);display:grid;place-items:center;flex:none}
+.shot .play::after{content:"";border-left:9px solid var(--fg-dim);border-top:6px solid transparent;
+  border-bottom:6px solid transparent;margin-left:2px}
+
+/* example left column */
+.ex-kick{font-family:var(--display);font-weight:600;color:var(--cyan);letter-spacing:.2em;
+  text-transform:uppercase;font-size:calc(13 * var(--pxs));margin-bottom:calc(14 * var(--pxs))}
+.ex-h{font-family:var(--display);font-weight:700;font-size:calc(44 * var(--pxs));line-height:1.1;margin-bottom:calc(16 * var(--pxs))}
+.ex-p{color:var(--fg-soft);font-size:calc(19 * var(--pxs));line-height:1.55;max-width:calc(620 * var(--pxs))}
+.ex-save{margin-top:calc(30 * var(--pxs));display:inline-flex;align-items:baseline;gap:calc(12 * var(--pxs));
+  border:1px solid var(--line-strong);border-radius:calc(14 * var(--pxs));padding:calc(14 * var(--pxs)) calc(20 * var(--pxs));
+  background:rgba(18,35,63,.7)}
+.ex-save b{font-family:var(--display);font-weight:700;font-size:calc(30 * var(--pxs));
+  background:linear-gradient(100deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.ex-save span{color:var(--fg-soft);font-size:calc(15 * var(--pxs))}
+.ex-tags{display:flex;gap:calc(8 * var(--pxs));margin-top:calc(18 * var(--pxs))}
+.ex-tags .chip{font-size:calc(12.5 * var(--pxs));padding:calc(5 * var(--pxs)) calc(13 * var(--pxs))}
+/* Voraussetzung auf den Folien von Kapitel "When the tools are in place" */
+.ex-req{margin-top:calc(14 * var(--pxs));display:flex;align-items:center;gap:calc(9 * var(--pxs));
+  font-size:calc(14.5 * var(--pxs));color:var(--fg-dim)}
+.ex-req::before{content:"";flex:none;width:calc(7 * var(--pxs));height:calc(7 * var(--pxs));
+  border-radius:50%;background:var(--sky)}
+
+/* ── tools: Skills & Projekte ── */
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:calc(26 * var(--pxs));margin-top:calc(40 * var(--pxs))}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(28 * var(--pxs)) calc(30 * var(--pxs));position:relative;overflow:hidden}
+.tool::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky))}
+.tool.gpt::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.tool-head{display:flex;align-items:center;gap:calc(12 * var(--pxs));margin-bottom:calc(18 * var(--pxs))}
+.tool-head svg{width:calc(30 * var(--pxs));height:calc(30 * var(--pxs));flex:none;
+  fill:none;stroke:var(--cyan);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tool-head h3{font-family:var(--display);font-size:calc(26 * var(--pxs))}
+.tf{display:flex;gap:calc(14 * var(--pxs));padding:calc(13 * var(--pxs)) 0;border-top:1px solid var(--line)}
+.tf b{flex:none;width:calc(170 * var(--pxs));font-family:var(--display);font-weight:600;
+  font-size:calc(17.5 * var(--pxs));color:#fff}
+.tf b i{display:block;font-style:normal;font-size:calc(11.5 * var(--pxs));font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:calc(3 * var(--pxs))}
+.tf p{color:var(--fg-soft);font-size:calc(16 * var(--pxs));line-height:1.5}
+.tools-bridge{margin-top:calc(26 * var(--pxs));display:flex;align-items:center;gap:calc(14 * var(--pxs));
+  border:1px solid var(--line-strong);border-radius:calc(14 * var(--pxs));
+  padding:calc(16 * var(--pxs)) calc(22 * var(--pxs));background:rgba(16,69,136,.25)}
+.tools-bridge b{font-family:var(--display);color:#fff;white-space:nowrap}
+.tools-bridge p{color:var(--fg-soft);font-size:calc(15.5 * var(--pxs));line-height:1.45}
+
+/* mittig zentrierte Board-Folien */
+.slide.mid{display:flex;flex-direction:column;justify-content:center;padding-top:calc(88 * var(--pxs))}
+
+/* dichte Folien */
+.slide.dense{padding-top:calc(96 * var(--pxs))}
+.slide.dense h2{font-size:calc(44 * var(--pxs));margin-bottom:calc(10 * var(--pxs))}
+.slide.dense .lede{font-size:calc(18.5 * var(--pxs))}
+.slide.dense .tools{margin-top:calc(24 * var(--pxs))}
+.slide.dense .tools-bridge{margin-top:calc(14 * var(--pxs));padding:calc(12 * var(--pxs)) calc(20 * var(--pxs))}
+.slide.dense .fw{margin-top:calc(28 * var(--pxs))}
+.slide.dense .fw-line{margin-top:calc(20 * var(--pxs))}
+.slide.dense .tf{padding:calc(10 * var(--pxs)) 0}
+/* Roadmap: zweizeilige Headline darf den Fliesstext der Nachbarkarten nicht verschieben */
+.slide.dense .fw h3{min-height:2.4em}
+
+/* Kontext-Chips im Chat */
+.ctxlabel{font-family:var(--display);font-weight:600;font-size:calc(11.5 * var(--pxs));
+  letter-spacing:.16em;text-transform:uppercase;color:var(--fg-dim);margin-bottom:calc(-4 * var(--pxs))}
+.ctxrow{display:flex;flex-wrap:wrap;gap:calc(8 * var(--pxs))}
+.ctx{font-size:calc(13 * var(--pxs));color:var(--cyan);border:1px solid rgba(63,211,224,.4);
+  border-radius:999px;padding:calc(5 * var(--pxs)) calc(12 * var(--pxs));opacity:0;transform:scale(.8)}
+.slide.active .ctx{animation:ctxin .45s var(--ease) both}
+.slide.active .ctx.c1{animation-delay:.4s}
+.slide.active .ctx.c2{animation-delay:.8s}
+.slide.active .ctx.c3{animation-delay:1.2s}
+@keyframes ctxin{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+
+/* Voice-Waveform */
+.wave{display:inline-flex;align-items:center;gap:calc(3 * var(--pxs));height:calc(22 * var(--pxs))}
+.wave i{width:calc(3.5 * var(--pxs));border-radius:2px;background:#fff;opacity:.9;
+  animation:wv 1s ease-in-out infinite;height:30%}
+.wave i:nth-child(3n){animation-delay:.15s}
+.wave i:nth-child(3n+1){animation-delay:.3s}
+.wave i:nth-child(4n){animation-delay:.45s}
+.wave i:nth-child(5n){animation-delay:.6s}
+@keyframes wv{0%,100%{height:25%}50%{height:100%}}
+
+/* Flow-Kette */
+.flow{display:flex;flex-direction:column;gap:calc(18 * var(--pxs))}
+.fnode{display:flex;align-items:center;gap:calc(16 * var(--pxs));background:var(--panel);
+  border:1px solid var(--line);border-radius:calc(14 * var(--pxs));
+  padding:calc(16 * var(--pxs)) calc(22 * var(--pxs));position:relative;opacity:0}
+.fnode b{font-family:var(--display);font-size:calc(18 * var(--pxs));flex:none;width:calc(140 * var(--pxs))}
+.fnode p{color:var(--fg-soft);font-size:calc(15.5 * var(--pxs))}
+.fnode .fi{flex:none;width:calc(40 * var(--pxs));height:calc(40 * var(--pxs));border-radius:calc(10 * var(--pxs));
+  display:grid;place-items:center;background:var(--marine);color:#fff;font-size:calc(19 * var(--pxs))}
+.fnode::after{content:"";position:absolute;left:calc(41 * var(--pxs));bottom:calc(-19 * var(--pxs));
+  width:2px;height:calc(19 * var(--pxs));background:linear-gradient(180deg,var(--sky),transparent)}
+.fnode:last-child::after{display:none}
+.slide.active .fnode{animation:fnin .5s var(--ease) both, frun 5.6s ease-in-out infinite;
+  animation-delay:calc(var(--i) * .45s + .4s), calc(var(--i) * .8s + 2.4s)}
+@keyframes fnin{from{opacity:0;transform:translateX(calc(24 * var(--pxs)))}to{opacity:1;transform:none}}
+@keyframes frun{0%,100%{border-color:var(--line);box-shadow:none}
+  8%{border-color:var(--cyan);box-shadow:0 0 calc(22 * var(--pxs)) rgba(63,211,224,.35)}
+  18%{border-color:var(--line);box-shadow:none}}
+
+/* ── math / KPI ── */
+.math{display:flex;align-items:center;gap:calc(28 * var(--pxs));margin-top:calc(50 * var(--pxs))}
+.mcard{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(34 * var(--pxs)) calc(28 * var(--pxs));text-align:center;position:relative;overflow:hidden}
+.mcard::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--marine),var(--sky))}
+.mcard.final::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.mcard .v{font-family:var(--display);font-weight:700;font-size:calc(52 * var(--pxs));font-variant-numeric:tabular-nums}
+.mcard.final .v{font-size:calc(58 * var(--pxs));
+  background:linear-gradient(100deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.mcard .l{margin-top:calc(10 * var(--pxs));font-size:calc(15.5 * var(--pxs));color:var(--fg-soft);line-height:1.4}
+.marrow{font-family:var(--display);font-size:calc(34 * var(--pxs));color:var(--fg-dim);flex:none}
+.mnote{margin-top:calc(30 * var(--pxs));color:var(--fg-dim);font-size:calc(14.5 * var(--pxs))}
+.mnote b{color:var(--fg-soft)}
+
+/* ── framework ── */
+.fw{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(22 * var(--pxs));margin-top:calc(48 * var(--pxs))}
+.fw .st{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(36 * var(--pxs)) calc(32 * var(--pxs));position:relative}
+.fw .st::after{content:"→";position:absolute;right:calc(-20 * var(--pxs));top:50%;transform:translateY(-50%);
+  font-family:var(--display);color:var(--fg-dim);font-size:calc(22 * var(--pxs));z-index:2}
+.fw .st:last-child::after{content:"↺";color:var(--cyan)}
+.fw .n{font-family:var(--display);font-weight:700;font-size:calc(44 * var(--pxs));
+  background:linear-gradient(120deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.fw h3{font-family:var(--display);font-size:calc(25 * var(--pxs));margin:.4em 0 .5em}
+.fw p{color:var(--fg-soft);font-size:calc(17.5 * var(--pxs));line-height:1.55}
+.fw-line{margin-top:calc(36 * var(--pxs));font-family:var(--display);font-weight:600;font-size:calc(23 * var(--pxs));color:var(--fg-soft)}
+.fw-line b{color:#fff}
+
+/* ── Zukunft: Prompts, Aufgaben, Ziele ── */
+.fut{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(28 * var(--pxs));margin-top:calc(30 * var(--pxs))}
+.fut .fc{background:var(--panel);border:1px solid var(--line);border-radius:calc(18 * var(--pxs));
+  padding:calc(28 * var(--pxs)) calc(30 * var(--pxs));position:relative;overflow:hidden}
+.fut .fc::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--marine),var(--sky))}
+.fut .fc::after{content:"→";position:absolute;right:calc(-23 * var(--pxs));top:50%;transform:translateY(-50%);
+  font-family:var(--display);color:var(--fg-dim);font-size:calc(22 * var(--pxs));z-index:2}
+.fut .fc:last-child::after{display:none}
+.fut .fc.dim{background:rgba(18,35,63,.45)}
+.fut .fc.dim::before{background:rgba(154,183,220,.28)}
+.fut .fc.now{border-color:rgba(63,211,224,.5);box-shadow:0 0 calc(54 * var(--pxs)) rgba(63,211,224,.13)}
+.fut .fc.now::before{background:linear-gradient(90deg,var(--sky),var(--cyan))}
+.fut .when{font-family:var(--display);font-weight:600;font-size:calc(12 * var(--pxs));
+  letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:calc(9 * var(--pxs))}
+.fut .fc.dim .when{color:var(--fg-dim)}
+.fut h3{font-family:var(--display);font-size:calc(26 * var(--pxs));margin-bottom:calc(9 * var(--pxs))}
+.fut p{color:var(--fg-soft);font-size:calc(16.5 * var(--pxs));line-height:1.55}
+.fut .said{display:block;margin-top:calc(10 * var(--pxs));color:var(--cyan)}
+.s-fut h2{font-size:calc(72 * var(--pxs));margin-bottom:calc(16 * var(--pxs))}
+.s-fut .lede{font-size:calc(20 * var(--pxs));max-width:calc(1160 * var(--pxs))}
+.s-fut .fut h3{font-size:calc(30 * var(--pxs))}
+.s-fut .fut p{font-size:calc(18 * var(--pxs))}
+.s-fut .fw-line{font-size:calc(26 * var(--pxs));margin-top:calc(34 * var(--pxs))}
+
+/* ── CTA ── */
+.s-cta{display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.s-cta h2{font-size:calc(72 * var(--pxs))}
+.cta-sub{font-size:calc(23 * var(--pxs));color:var(--fg-soft);max-width:calc(860 * var(--pxs));line-height:1.55;margin-top:calc(8 * var(--pxs))}
+.cta-row{display:flex;gap:calc(16 * var(--pxs));margin-top:calc(44 * var(--pxs))}
+.btn{font-family:var(--display);font-weight:600;font-size:calc(17 * var(--pxs));
+  padding:calc(14 * var(--pxs)) calc(28 * var(--pxs));border-radius:999px;text-decoration:none}
+.btn.p{background:var(--marine);color:#fff;border:1px solid var(--sky)}
+.btn.g{border:1px solid var(--line-strong);color:var(--fg-soft)}
+.qa{position:absolute;right:calc(90 * var(--pxs));bottom:calc(90 * var(--pxs));
+  font-family:var(--display);font-weight:700;font-size:calc(120 * var(--pxs));color:rgba(154,183,220,.14)}
+
+/* dots nav */
+#dots{position:absolute;right:calc(26 * var(--pxs));top:50%;transform:translateY(-50%);z-index:30;
+  display:flex;flex-direction:column;gap:calc(10 * var(--pxs))}
+#dots button{width:calc(8 * var(--pxs));height:calc(8 * var(--pxs));border-radius:50%;border:0;cursor:pointer;
+  background:rgba(154,183,220,.3);padding:0}
+#dots button.on{background:var(--cyan);transform:scale(1.35)}
+
+/* ═══════════ Motion layer ═══════════ */
+/* ambient: slowly drifting light fields behind every slide */
+.gridbg::before{content:"";position:absolute;inset:-25%;pointer-events:none;
+  background:
+    radial-gradient(42rem 28rem at 28% 32%, rgba(53,170,255,.055), transparent 65%),
+    radial-gradient(36rem 26rem at 72% 68%, rgba(63,211,224,.045), transparent 65%);
+  animation:glowdrift 40s ease-in-out infinite alternate}
+@keyframes glowdrift{from{transform:translate(-2%,-1.5%)}to{transform:translate(2%,1.5%)}}
+.topbar::before{background-size:200% 100%;animation:shimmer 9s linear infinite}
+
+/* gradient headlines breathe */
+.grad,.ex-save b,.mcard.final .v,.fw .n{background-size:200% 100%;animation:shimmer 7s ease-in-out infinite}
+@keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
+/* kicker line draws in */
+.kicker::before{transform-origin:left;transform:scaleX(0);transition:transform .8s var(--ease) .25s}
+.slide.active .kicker::before{transform:scaleX(1)}
+
+/* slide hand-over: incoming slide scales up and fades in */
+.slide{transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.slide:not(.active){opacity:.4;transform:scale(.965)}
+
+/* title: the orbit system (canvas) fades and scales in */
+.t-orbit{opacity:0;transform:scale(.9);transition:opacity 1.6s var(--ease) .3s,transform 1.6s var(--ease) .3s}
+.slide.active .t-orbit{opacity:1;transform:scale(1)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* title: headline rises word by word, then a light sweeps through the gradient line */
+.s-title h1 .w{display:inline-block;overflow:hidden;vertical-align:bottom;padding-bottom:.14em;margin-bottom:-.14em}
+.s-title h1 .w>span{display:inline-block;transform:translateY(112%);transition:transform .9s var(--ease);
+  transition-delay:calc(.25s + var(--w,0) * .085s)}
+.slide.active.s-title h1 .w>span{transform:none}
+.s-title h1.an{transform:none}
+.s-title .grad{background:linear-gradient(100deg,var(--sky) 20%,var(--cyan) 40%,#EAFCFF 50%,var(--cyan) 60%,var(--sky) 80%);
+  background-size:250% 100%;background-position:0% 50%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:none}
+.slide.active.s-title .grad{animation:sweep 8s ease-in-out 2.2s infinite}
+@keyframes sweep{0%{background-position:100% 50%}22%,100%{background-position:0% 50%}}
+.s-title .t-sub{transition-duration:1s}
+
+/* chips pop in one after another */
+.t-chips .chip,.ex-tags .chip{opacity:0;transform:translateY(calc(8 * var(--pxs))) scale(.92);
+  transition:opacity .45s var(--ease),transform .45s var(--ease),border-color .3s,background-color .3s}
+.slide.active .t-chips .chip,.slide.active .ex-tags .chip{opacity:1;transform:none}
+.slide.active .chip:nth-child(1){transition-delay:.55s}
+.slide.active .chip:nth-child(2){transition-delay:.65s}
+.slide.active .chip:nth-child(3){transition-delay:.75s}
+.slide.active .chip:nth-child(4){transition-delay:.85s}
+.slide.active .chip:nth-child(5){transition-delay:.95s}
+.slide.active .chip:nth-child(6){transition-delay:1.05s}
+.chip:hover{border-color:var(--sky);color:#fff}
+
+/* cards react to the pointer */
+.lv:hover,.fw .st:hover,.fut .fc:hover,.mcard:hover,.tool:hover,.fnode:hover{
+  border-color:rgba(53,170,255,.6);background-color:var(--panel2);
+  box-shadow:0 calc(18 * var(--pxs)) calc(44 * var(--pxs)) rgba(0,0,0,.35),0 0 calc(34 * var(--pxs)) rgba(53,170,255,.14)}
+.lv svg,.tool-head svg{transition:transform .4s var(--ease),opacity .4s}
+.lv:hover svg{transform:scale(1.15) rotate(-6deg);opacity:1}
+.fw .n,.mcard .v{display:inline-block;transition:transform .4s var(--ease)}
+.fw .st:hover .n,.mcard:hover .v{transform:translateY(calc(-3 * var(--pxs)))}
+.btn{transition:transform .3s var(--ease),box-shadow .3s,border-color .3s,color .3s}
+.btn:hover{transform:translateY(calc(-3 * var(--pxs)));border-color:var(--sky);color:#fff;
+  box-shadow:0 calc(12 * var(--pxs)) calc(30 * var(--pxs)) rgba(53,170,255,.22)}
+
+/* arrows between cards pulse in sequence, the loop arrow turns */
+.fut .fc::after{animation:arrowpulse 3.2s ease-in-out infinite}
+.fut .fc:nth-child(2)::after{animation-delay:.4s}
+/* framework & roadmap: the highlight walks from card 01 to 04 and loops */
+.fw .st:nth-child(1){--s:0}.fw .st:nth-child(2){--s:1}.fw .st:nth-child(3){--s:2}.fw .st:nth-child(4){--s:3}
+.slide.active .fw .st{animation:stepwalk 12s ease-in-out infinite;animation-delay:calc(var(--s) * 3s + 1.2s)}
+.slide.active .fw .st .n{animation:shimmer 7s ease-in-out infinite,stepnum 12s ease-in-out infinite;
+  animation-delay:0s,calc(var(--s) * 3s + 1.2s)}
+.slide.active .fw .st::after{animation:steparrow 12s ease-in-out infinite;animation-delay:calc(var(--s) * 3s + 1.2s)}
+.slide.active .fw .st:last-child::after{animation:spinY 9s linear infinite}
+@keyframes stepwalk{0%,30%,100%{border-color:var(--line);box-shadow:none;background-color:var(--panel)}
+  5%,22%{border-color:rgba(63,211,224,.6);box-shadow:0 0 calc(46 * var(--pxs)) rgba(63,211,224,.16);background-color:var(--panel2)}}
+@keyframes stepnum{0%,30%,100%{transform:none;filter:brightness(1)}
+  5%,22%{transform:translateY(calc(-4 * var(--pxs))) scale(1.06);filter:brightness(1.3)}}
+@keyframes steparrow{0%,17%,100%{color:var(--fg-dim);transform:translateY(-50%) translateX(0)}
+  22%,28%{color:var(--cyan);transform:translateY(-50%) translateX(calc(6 * var(--pxs)))}
+  34%{color:var(--fg-dim);transform:translateY(-50%) translateX(0)}}
+@keyframes arrowpulse{0%,100%{opacity:.45;transform:translateY(-50%) translateX(0)}50%{opacity:1;transform:translateY(-50%) translateX(calc(5 * var(--pxs)))}}
+@keyframes spinY{to{transform:translateY(-50%) rotate(360deg)}}
+.marrow{animation:marrow 2.4s ease-in-out infinite}
+.marrow:nth-of-type(2){animation-delay:.4s}.marrow:nth-of-type(3){animation-delay:.8s}
+@keyframes marrow{0%,100%{color:var(--fg-dim)}50%{color:var(--cyan)}}
+.slide.active .mcard.final{animation:glowpulse 3.4s ease-in-out 1.6s infinite}
+@keyframes glowpulse{0%,100%{box-shadow:0 0 calc(24 * var(--pxs)) rgba(63,211,224,.08)}50%{box-shadow:0 0 calc(64 * var(--pxs)) rgba(63,211,224,.26)}}
+
+/* usage bars: light sheen runs along the fill */
+.bar .bf{position:relative;overflow:hidden}
+.bar .bf::after{content:"";position:absolute;inset:0;transform:translateX(-120%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);
+  animation:sheen 3.6s ease-in-out 2.2s infinite}
+@keyframes sheen{0%{transform:translateX(-120%)}45%,100%{transform:translateX(120%)}}
+
+/* CTA watermark floats */
+.qa{animation:floaty 7s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-14 * var(--pxs)))}}
+
+/* CTA: routine tasks get ticked off, one after another, in a loop */
+.s-cta .cta-sub,.s-cta .cta-row,.s-cta h2{position:relative;z-index:2}
+.cta-tasks{position:absolute;right:calc(120 * var(--pxs));top:50%;translate:0 -50%;width:calc(560 * var(--pxs));
+  display:flex;flex-direction:column;gap:calc(12 * var(--pxs));z-index:1}
+.cta-tasks.an{transform:translateY(calc(26 * var(--pxs)))}
+.slide.active .cta-tasks.an{transform:none}
+.ct-label{font-family:var(--display);font-weight:600;font-size:calc(12 * var(--pxs));letter-spacing:.18em;
+  text-transform:uppercase;color:var(--fg-dim);margin-bottom:calc(4 * var(--pxs))}
+.task{display:flex;align-items:center;gap:calc(14 * var(--pxs));background:var(--panel);border:1px solid var(--line);
+  border-radius:calc(12 * var(--pxs));padding:calc(13 * var(--pxs)) calc(18 * var(--pxs));
+  font-size:calc(16.5 * var(--pxs));color:var(--fg);position:relative;overflow:hidden}
+.task em{margin-left:auto;font-style:normal;font-family:var(--display);font-weight:600;color:var(--fg-dim);font-size:calc(14 * var(--pxs))}
+.task .tx{position:relative}
+.task .tx::after{content:"";position:absolute;left:0;top:55%;height:1.5px;width:0;background:var(--cyan)}
+.task .chk{flex:none;width:calc(22 * var(--pxs));height:calc(22 * var(--pxs));border-radius:50%;border:1.5px solid var(--line-strong);
+  display:grid;place-items:center;position:relative}
+.task .chk::after{content:"";width:calc(6 * var(--pxs));height:calc(11 * var(--pxs));border:solid #fff;border-width:0 2px 2px 0;
+  transform:rotate(45deg) scale(0);margin-top:calc(-2 * var(--pxs))}
+/* cycle: 14s; task t ticks at 1.2s + t*1.4s, all reset at the end */
+.slide.active .task{animation:taskbox 14s ease-in-out infinite;animation-delay:calc(1.2s + var(--t) * 1.4s)}
+.slide.active .task .chk{animation:taskchk 14s ease-in-out infinite;animation-delay:calc(1.2s + var(--t) * 1.4s)}
+.slide.active .task .chk::after{animation:tasktick 14s ease-in-out infinite;animation-delay:calc(1.2s + var(--t) * 1.4s)}
+.slide.active .task .tx::after{animation:taskline 14s ease-in-out infinite;animation-delay:calc(1.2s + var(--t) * 1.4s)}
+.slide.active .task em{animation:taskem 14s ease-in-out infinite;animation-delay:calc(1.2s + var(--t) * 1.4s)}
+@keyframes taskbox{0%{border-color:var(--line);box-shadow:none;color:var(--fg)}
+  3%{border-color:var(--cyan);box-shadow:0 0 calc(26 * var(--pxs)) rgba(63,211,224,.28)}
+  9%,78%{border-color:var(--line);box-shadow:none;color:var(--fg-dim)}
+  86%,100%{border-color:var(--line);box-shadow:none;color:var(--fg)}}
+@keyframes taskchk{0%{background:transparent;border-color:var(--line-strong)}
+  3%,78%{background:var(--sky);border-color:var(--sky)}
+  86%,100%{background:transparent;border-color:var(--line-strong)}}
+@keyframes tasktick{0%{transform:rotate(45deg) scale(0)}3%,78%{transform:rotate(45deg) scale(1)}86%,100%{transform:rotate(45deg) scale(0)}}
+@keyframes taskline{0%{width:0}4%,78%{width:100%}86%,100%{width:0}}
+@keyframes taskem{0%{color:var(--fg-dim)}3%,78%{color:var(--cyan)}86%,100%{color:var(--fg-dim)}}
+.ct-sum{display:flex;align-items:baseline;justify-content:space-between;margin-top:calc(6 * var(--pxs));
+  padding:calc(10 * var(--pxs)) calc(18 * var(--pxs)) 0;border-top:1px solid var(--line-strong);
+  font-size:calc(14.5 * var(--pxs));color:var(--fg-soft)}
+.ct-sum b{font-family:var(--display);font-weight:700;font-size:calc(30 * var(--pxs));font-variant-numeric:tabular-nums;
+  background:linear-gradient(100deg,var(--sky),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.s-cta .qa{right:calc(90 * var(--pxs));bottom:calc(40 * var(--pxs));font-size:calc(96 * var(--pxs))}
+
+/* A year from now: a light travels the timeline, cards and their signal dots wake up in turn */
+.fut{position:relative}
+.fut::before{content:"";position:absolute;left:calc(16.6667% - 60 * var(--pxs));right:calc(16.6667% - 60 * var(--pxs));top:calc(-16 * var(--pxs));height:1px;
+  background:linear-gradient(90deg,transparent,var(--line-strong) 12%,var(--line-strong) 88%,transparent)}
+.fut .fc::before{z-index:1}
+.fut .fc:nth-child(1){--s:0}.fut .fc:nth-child(2){--s:1}.fut .fc:nth-child(3){--s:2}
+.fut .fc{outline:1px solid transparent;outline-offset:-1px}
+.slide.active .fut .fc{animation:futwalk 12s ease-in-out infinite;animation-delay:calc(var(--s) * 4s + 1s)}
+@keyframes futwalk{0%,34%,100%{outline-color:transparent;box-shadow:0 0 0 rgba(63,211,224,0)}
+  4%,28%{outline-color:rgba(63,211,224,.75);box-shadow:0 0 calc(60 * var(--pxs)) rgba(63,211,224,.2)}}
+.fut .tl-dot{position:absolute;top:calc(-22 * var(--pxs));left:calc(16.6667% - 6.5 * var(--pxs));width:calc(13 * var(--pxs));height:calc(13 * var(--pxs));
+  border-radius:50%;background:var(--cyan);box-shadow:0 0 calc(18 * var(--pxs)) var(--cyan),0 0 calc(40 * var(--pxs)) rgba(63,211,224,.5);opacity:0}
+.slide.active .fut .tl-dot{animation:journey 12s ease-in-out 1s infinite}
+@keyframes journey{0%{left:calc(16.6667% - 6.5 * var(--pxs));opacity:0}3%,28%{left:calc(16.6667% - 6.5 * var(--pxs));opacity:1}
+  36%,61%{left:calc(50% - 6.5 * var(--pxs));opacity:1}69%,94%{left:calc(83.3333% - 6.5 * var(--pxs));opacity:1}
+  98%{left:calc(83.3333% - 6.5 * var(--pxs));opacity:0}100%{left:calc(16.6667% - 6.5 * var(--pxs));opacity:0}}
+.fc-viz{display:flex;align-items:center;gap:calc(7 * var(--pxs));margin-top:calc(18 * var(--pxs));height:calc(14 * var(--pxs))}
+.fc-viz i{display:block;width:calc(10 * var(--pxs));height:calc(10 * var(--pxs));border-radius:50%;background:var(--line-strong)}
+.fc-viz i.goal{width:calc(14 * var(--pxs));height:calc(14 * var(--pxs));margin-right:calc(4 * var(--pxs))}
+.fc-viz em{font-style:normal;margin-left:calc(6 * var(--pxs));font-family:var(--display);font-weight:600;font-size:calc(12 * var(--pxs));
+  letter-spacing:.08em;text-transform:uppercase;color:var(--fg-dim)}
+.fc-viz i:nth-child(1){--k:0}.fc-viz i:nth-child(2){--k:1}.fc-viz i:nth-child(3){--k:2}.fc-viz i:nth-child(4){--k:3}
+.fc-viz i:nth-child(5){--k:4}.fc-viz i:nth-child(6){--k:5}.fc-viz i:nth-child(7){--k:6}
+.slide.active .fc-viz i{animation:vizpop 12s ease-out infinite;animation-delay:calc(var(--s) * 4s + 1.4s + var(--k) * .16s)}
+.slide.active .fc-viz i.goal{animation-name:vizgoal}
+@keyframes vizpop{0%{background:var(--line-strong);transform:scale(1)}3%{background:#fff;transform:scale(1.6)}
+  6%,26%{background:var(--sky);transform:scale(1)}32%,100%{background:var(--line-strong);transform:scale(1)}}
+@keyframes vizgoal{0%{background:var(--line-strong)}3%{background:#fff;transform:scale(1.4)}6%,26%{background:var(--cyan);transform:scale(1);box-shadow:0 0 calc(12 * var(--pxs)) rgba(63,211,224,.7)}32%,100%{background:var(--line-strong);box-shadow:none}}
+
+/* KPI: 100 dots, one per employee, light up one after another */
+.hgrid{margin-top:calc(30 * var(--pxs));display:flex;align-items:center;gap:calc(32 * var(--pxs))}
+.hg-dots{display:grid;grid-template-columns:repeat(25,calc(14 * var(--pxs)));gap:calc(8 * var(--pxs))}
+.hg-dots i{display:block;width:calc(14 * var(--pxs));height:calc(14 * var(--pxs));border-radius:calc(3 * var(--pxs));background:rgba(154,183,220,.12)}
+.slide.active .hg-dots i{animation:hgfill 13s ease-out infinite;animation-delay:calc(1.4s + var(--d) * .04s)}
+@keyframes hgfill{0%{background:rgba(154,183,220,.12);box-shadow:none}
+  3%{background:#fff;box-shadow:0 0 calc(12 * var(--pxs)) rgba(63,211,224,.9)}
+  7%,72%{background:var(--sky);box-shadow:0 0 calc(6 * var(--pxs)) rgba(53,170,255,.35)}
+  80%,100%{background:rgba(154,183,220,.12);box-shadow:none}}
+.hg-cap{color:var(--fg-soft);font-size:calc(15.5 * var(--pxs));line-height:1.5;max-width:calc(420 * var(--pxs))}
+.hg-cap b{color:#fff;font-family:var(--display)}
+
+/* presentation mode: hide the pointer while idle */
+body.idle,body.idle *{cursor:none!important}
+
+/* dots nav breathes on the active slide */
+#dots button{transition:background .3s,transform .3s var(--ease)}
+#dots button:hover{background:var(--sky);transform:scale(1.5)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="gridbg" aria-hidden="true"></div>
+
+  <div class="topbar">
+    <a href="#/1" id="homeLogo" style="display:flex;align-items:center"><img src="assets/pdsf-white.svg" alt="Possehl Digital Service Factory" style="height:calc(30 * var(--pxs))" ></a>
+    <span class="tb-title">AI Utilization</span>
+  </div>
+
+  <div id="deck">
+
+    <!-- 1 · TITLE -->
+    <section class="slide s-title" data-title="Title">
+      <canvas class="t-orbit" id="orbit" aria-hidden="true"></canvas>
+      <div class="kicker an" style="--i:0">Possehl Digital Service Factory · AI Session</div>
+      <h1 class="an" style="--i:1">AI Utilization.<br><span class="grad">The real gains are in daily work.</span></h1>
+      <p class="t-sub an" style="--i:2">The one AI lighthouse project is not what decides it. What decides it is whether <b>every single employee</b> uses AI in a way that makes daily work easier, faster or simply better.</p>
+      <div class="t-chips an" style="--i:3">
+        <span class="chip hot">Possehl GPT</span>
+        <span class="chip">Claude</span>
+        <span class="chip">Copilot</span>
+        <span class="chip">Dokko</span>
+        <span class="chip">No-code on-board tools</span>
+      </div>
+    </section>
+
+    <!-- 2 · REALITY -->
+    <section class="slide" data-title="Reality">
+      <div class="split">
+        <div>
+          <div class="kicker an" style="--i:0">01 · Where we are today</div>
+          <h2 class="an" style="--i:1">Most people use AI as a<br><span class="grad">better search engine.</span></h2>
+          <p class="lede an" style="--i:2">Those who have access to a company chatbot mostly use it to search, phrase e-mails, polish documents and translate. And far from everyone has access at all. The real value stays with a handful of key users.</p>
+          <div class="r-punch an" style="--i:3">That gap is the opportunity: <b>the biggest wins are still on the table.</b></div>
+        </div>
+        <div class="bars an" style="--i:2">
+          <div class="bar dim" style="--w:78%;--i:0"><div class="bl"><span>Better search engine</span><em>most used</em></div><div class="bt"><div class="bf"></div></div></div>
+          <div class="bar dim" style="--w:64%;--i:1"><div class="bl"><span>E-mails &amp; documents</span><em>daily</em></div><div class="bt"><div class="bf"></div></div></div>
+          <div class="bar dim" style="--w:34%;--i:2"><div class="bl"><span>Language translations</span><em>in international teams</em></div><div class="bt"><div class="bf"></div></div></div>
+          <div class="bar hot" style="--w:8%;--i:3"><div class="bl"><span>Skills &amp; agents that automate routine work</span><em>very few</em></div><div class="bt"><div class="bf"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · THE LEVER -->
+    <section class="slide mid" data-title="The lever">
+      <div class="kicker an" style="--i:0">02 · The bigger lever</div>
+      <h2 class="an" style="--i:1">Efficiency does not come from chatting.<br>It comes from <span class="grad">skills &amp; agents.</span></h2>
+      <p class="lede an" style="--i:2">Three easy steps to better AI utilization. Every employee can do all three, with the no-code on-board tools we already have or could have.</p>
+      <div class="lever">
+        <div class="lv an" style="--i:3">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+          <div class="n">STEP 1</div>
+          <h3>Use it right</h3>
+          <p>Good prompts, the right model for the task, documents as context. Minutes saved every day. By everyone.</p>
+        </div>
+        <div class="lv an" style="--i:4">
+          <svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><rect x="8" y="8" width="8" height="8" rx="2"/></svg>
+          <div class="n">STEP 2</div>
+          <h3>Build your own agents &amp; skills</h3>
+          <p>Turn a recurring task into a reusable skill. No code, directly in Possehl GPT or the chatbot at your availability. Build once, benefit daily.</p>
+        </div>
+        <div class="lv b3 an" style="--i:5">
+          <svg viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-8"/><path d="M14 7h6v6"/></svg>
+          <div class="n">STEP 3</div>
+          <h3>Tap into existing agents</h3>
+          <p>Possehl GPT and other chatbots at your availability already offer agents built by colleagues or built for tasks like yours. You review the result instead of doing the work.</p>
+        </div>
+      </div>
+      <div class="fw-line an" style="--i:6">Routine work runs itself. <b>You review. You decide.</b></div>
+    </section>
+
+    <!-- 4 · EVERYDAY A: VOICE -->
+    <section class="slide" data-title="Everyday: Voice">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">03 · Start with what you already have</div>
+          <div class="ex-h an" style="--i:1">Speaking is faster<br>than typing.</div>
+          <p class="ex-p an" style="--i:2">The underrated lever: Work more with your voice. Dictate instead of typing: on the go, between meetings, right after the call. The AI turns the spoken thought into the finished e-mail, note or task.</p>
+          <div class="ex-save an" style="--i:3"><b>~3×</b><span>faster spoken than typed. The AI takes care of the form</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Windows Voice typing</span><span class="chip hot">macOS Dictation</span><span class="chip">GPT</span><span class="chip">Whisper</span><span class="chip">AI recorder</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Voice
+              <span class="pg-model">Input: <b>Dictation · on the go</b></span></div>
+            <div class="pg-body">
+              <div class="msg user m1" style="display:flex;align-items:center;gap:calc(10 * var(--pxs))">🎙<span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+              <div class="msg user m1" style="animation-delay:1.15s">“Quick mail to the team … I am about three times faster on writing since I started dictating, the AI does the rest … tell them to just try it this week …”</div>
+              <div class="pg-typing" style="animation-delay:1.9s"><i></i><i></i><i></i></div>
+              <div class="msg bot m2" style="animation-delay:2.9s;max-width:97%">Draft ready, in your tone and with your standard sign-off:
+                <div class="mail">
+                  <div class="mail-sub"><i>Subject</i>Tripled my output, and I barely typed a word</div>
+                  <div class="mail-body">Hi team,<br>I have been getting through my writing about three times faster lately. The trick is simple: I speak, the AI writes.<br>Give it a try this week. Dictate your next mail instead of typing it.<br>Best regards,<br>Calvin</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · EVERYDAY B: MEETING WRAP-UP -->
+    <section class="slide" data-title="Everyday: Meeting wrap-up">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">03 · Start with what you already have</div>
+          <div class="ex-h an" style="--i:1">The meeting<br>wrap-up agent.</div>
+          <p class="ex-p an" style="--i:2">Drop in the transcript. The agent returns structured minutes, clear action items with owners and a drafted follow-up e-mail. Your role and tone, your spellings and your minutes structure are built into the skill, so the draft already sounds like you.</p>
+          <div class="ex-save an" style="--i:3"><b>~20 min</b><span>saved per meeting. Minutes, follow-ups and your wording, done</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Possehl GPT</span><span class="chip">Copilot</span><span class="chip">Claude</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Possehl GPT
+              <span class="pg-model">Skill: <b>Meeting wrap-up</b></span></div>
+            <div class="pg-body">
+              <div class="ctxlabel">Built into the skill</div>
+              <div class="ctxrow"><span class="ctx c1">👤 Your role &amp; tone ✓</span><span class="ctx c2">✏️ Your correction list ✓</span><span class="ctx c3">📋 Template: 5-block minutes ✓</span></div>
+              <div class="msg user m1" style="animation-delay:1.6s">/meeting-wrapup: here is the transcript of today’s steering call (42 min) 📎</div>
+              <div class="msg bot m2" style="animation-delay:3.1s;max-width:97%">Done. Here is your wrap-up, drafted in your tone:<ul><li><b>Minutes</b>: 6 topics, decisions highlighted</li><li><b>Action items</b>: 5 tasks with WHAT, WHO, BY WHEN</li></ul>
+                <div class="mail">
+                  <div class="mail-sub"><i>Follow-up e-mail</i>Steering call: decisions and next steps</div>
+                  <div class="mail-body">Hi all,<br>Thanks for today. The minutes are attached, decisions marked.<br>Five action items with owners and due dates. Please check yours by Friday.<br>Best regards,<br>Calvin</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · EVERYDAY C: CONSOLIDATION -->
+    <section class="slide" data-title="Everyday: Consolidation">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">03 · Start with what you already have</div>
+          <div class="ex-h an" style="--i:1">3 documents in.<br>One spreadsheet out.</div>
+          <p class="ex-p an" style="--i:2">Upload the three source documents. The skill lifts every figure into your agreed Excel structure, checks the result for plausibility and asks back where something does not add up. The target format is defined once. From then on the skill knows what to look for.</p>
+          <div class="ex-save an" style="--i:3"><b>~1.5 h</b><span>saved per reporting run. No figures copied by hand</span></div>
+          <div class="ex-tags an" style="--i:4"><span class="chip hot">Possehl GPT</span><span class="chip">Copilot</span><span class="chip">Claude</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Possehl GPT
+              <span class="pg-model">Skill: <b>Month-end consolidation</b></span></div>
+            <div class="pg-body">
+              <div class="ctxlabel">Built into the skill</div>
+              <div class="ctxrow"><span class="ctx c1">📊 Target format: your controlling sheet ✓</span><span class="ctx c2">🔍 Plausibility rules ✓</span><span class="ctx c3">🧾 Source mapping ✓</span></div>
+              <div class="msg user m1" style="animation-delay:1.6s">Three files for the month-end close 📎 cost report, supplier list, project hours</div>
+              <div class="msg bot m2" style="animation-delay:2.6s">All figures are in your structure. One check came back open: project 4711 shows <b>12 hours</b> in the time report and <b>15 hours</b> in the cost report. Which one counts?</div>
+              <div class="msg user m3" style="animation-delay:3.8s">The time report.</div>
+              <div class="msg bot m3" style="animation-delay:4.8s;max-width:97%">Done.
+                <div class="mail">
+                  <div class="mail-sub"><i>Excel file</i>controlling-close.xlsx</div>
+                  <div class="mail-body">3 sources, 214 rows, ready for download ✓</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · ROADMAP -->
+    <section class="slide mid dense" data-title="Roadmap">
+      <div class="kicker an" style="--i:0">04 · Your roadmap</div>
+      <h2 class="an" style="--i:1">Think about your own <span class="grad">personal AI roadmap.</span></h2>
+      <p class="lede an" style="--i:2">Four questions are enough to start today, for everyone:</p>
+      <div class="fw">
+        <div class="st an" style="--i:3"><div class="n">01</div><h3>What is hardest every day?</h3><p>What keeps eating time and annoys you? That is your first candidate.</p></div>
+        <div class="st an" style="--i:4"><div class="n">02</div><h3>What could automation look like?</h3><p>What would the result be if the task did itself? A rough sketch of the target picture is enough.</p></div>
+        <div class="st an" style="--i:5"><div class="n">03</div><h3>Which tools are available?</h3><p>Possehl GPT is certainly at hand. Claude, Copilot, Dokko or n8n are worth checking for. The right tool may already be on board.</p></div>
+        <div class="st an" style="--i:6"><div class="n">04</div><h3>Ask the AI how to do it.</h3><p>The simplest trick: Describe the task to the AI and ask it how to automate itself.</p></div>
+      </div>
+      <div class="fw-line an" style="--i:7">No big project needed. <b>Four questions and your first skill is live.</b></div>
+    </section>
+
+    <!-- 8 · NEXT LEVEL A: DOKKO -->
+    <section class="slide" data-title="Next level: Dokko">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">05 · With the right tools, even more is possible</div>
+          <div class="ex-h an" style="--i:1">Company knowledge<br>that answers back.</div>
+          <p class="ex-p an" style="--i:2">Contracts, manuals, machine data, service reports, maintenance reports, customer tickets: tons of data. AI reads them completely and answers with the source attached. Read deep. Act fast. Answers in seconds instead of search hours.</p>
+          <div class="ex-save an" style="--i:3"><b>Seconds</b><span>instead of search hours. Backed by sources, not guesses</span></div>
+          <div class="ex-tags an" style="--i:5"><span class="chip">WorkIQ</span><span class="chip">Dokko</span><span class="chip">MCP</span><span class="chip">Knowledge graph</span><span class="chip">Works inside your daily tools</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Dokko
+              <span class="pg-model">Knowledge: <b>Contracts &amp; manuals</b></span></div>
+            <div class="pg-body">
+              <div class="msg user m1">What notice period applies in our maintenance contract with supplier K., and who has to be informed?</div>
+              <div class="pg-typing"><i></i><i></i><i></i></div>
+              <div class="msg bot m2"><b>3 months to quarter-end.</b> Written notice to the supplier’s service office; internally, procurement and the plant manager must be informed.<br><span class="src">📄 Source: Maintenance contract K., §9 (2), p. 14</span></div>
+              <div class="msg user m3">Draft the notification for procurement.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 · NEXT LEVEL B: WEEKLY REPORT -->
+    <section class="slide" data-title="Next level: Weekly report">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">05 · With the right tools, even more is possible</div>
+          <div class="ex-h an" style="--i:1">The weekly report<br>writes itself.</div>
+          <p class="ex-p an" style="--i:2">Every Friday the agent collects the week’s figures and notes, drafts the status report in your structure and flags what needs attention. You review, adjust one line, send.</p>
+          <div class="ex-save an" style="--i:3"><b>~2 h</b><span>saved per week. The routine part of reporting, automated</span></div>
+          <div class="ex-req an" style="--i:4">Requires: data sources connected to the agent</div>
+          <div class="ex-tags an" style="--i:5"><span class="chip hot">Possehl GPT</span><span class="chip">Copilot</span><span class="chip">Claude</span><span class="chip">Scheduled agent</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="pgpt">
+            <div class="pg-head"><span class="dots"><i></i><i></i><i></i></span> Possehl GPT
+              <span class="pg-model">Agent: <b>Weekly report</b> · Fridays 14:00</span></div>
+            <div class="pg-body">
+              <div class="msg bot m1">Your weekly report is ready:<ul><li>Production &amp; order status: <b>on track</b></li><li>2 topics flagged for attention</li><li>Draft in your template, ready for review</li></ul></div>
+              <div class="msg user m2">Change the outlook, add next week’s audit.</div>
+              <div class="msg bot m3">Updated. The report is ready to send. ✓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 · NEXT LEVEL C: AUTOMATION -->
+    <section class="slide" data-title="Next level: Automation">
+      <div class="split">
+        <div>
+          <div class="ex-kick an" style="--i:0">05 · With the right tools, even more is possible</div>
+          <div class="ex-h an" style="--i:1">One shortcut,<br>and the chain runs.</div>
+          <p class="ex-p an" style="--i:2">Apple Shortcuts kick things off, n8n orchestrates in the background: A dictation becomes finished minutes, news becomes the morning briefing, e-mail and calendar routines run automatically.</p>
+          <div class="ex-save an" style="--i:3"><b>In the background</b><span>routine runs before the day begins</span></div>
+          <div class="ex-req an" style="--i:4">Requires: n8n available with access to your systems</div>
+          <div class="ex-tags an" style="--i:5"><span class="chip hot">Shortcuts</span><span class="chip">n8n</span><span class="chip">LLMs</span></div>
+        </div>
+        <div class="an" style="--i:2">
+          <div class="flow">
+            <div class="fnode" style="--i:0"><span class="fi">⌘</span><b>Shortcut</b><p>Dictation on Watch or iPhone</p></div>
+            <div class="fnode" style="--i:1"><span class="fi">⚙</span><b>n8n</b><p>Transcribes &amp; structures</p></div>
+            <div class="fnode" style="--i:2"><span class="fi">✦</span><b>LLM</b><p>5-block minutes are created</p></div>
+            <div class="fnode" style="--i:3"><span class="fi">✉</span><b>Inbox</b><p>Draft is waiting</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 · THE MATH -->
+    <section class="slide mid" data-title="The math">
+      <div class="kicker an" style="--i:0">06 · What it’s worth</div>
+      <h2 class="an" style="--i:1">Big savings per person,<br><span class="grad">an even bigger number for the company.</span></h2>
+      <p class="lede an" style="--i:2">A deliberately conservative calculation:</p>
+      <div class="math">
+        <div class="mcard an" style="--i:3"><div class="v"><span data-count="45">0</span> min</div><div class="l">of routine work per day<br>that AI can take over</div></div>
+        <div class="marrow an" style="--i:4">→</div>
+        <div class="mcard an" style="--i:4"><div class="v">~<span data-count="4">0</span> h</div><div class="l">per employee<br>per week</div></div>
+        <div class="marrow an" style="--i:5">→</div>
+        <div class="mcard an" style="--i:5"><div class="v"><span data-count="180">0</span> h</div><div class="l">per employee<br>per year</div></div>
+        <div class="marrow an" style="--i:6">→</div>
+        <div class="mcard final an" style="--i:6"><div class="v"><span data-count="18000">0</span> h</div><div class="l"><b>per year at 100 employees</b><br>time invested better</div></div>
+      </div>
+      <p class="mnote an" style="--i:7">An illustrative example. <b>Your numbers will differ, so measure them:</b> Every skill and agent carries a simple “hours saved” estimate.</p>
+      <div class="hgrid an" style="--i:8" aria-hidden="true">
+        <div class="hg-dots" id="hgDots"></div>
+        <div class="hg-cap"><b>100 employees.</b> Every dot is one colleague who gets 180 hours back per year. Together: <b>18,000 hours</b>.</div>
+      </div>
+    </section>
+
+    <!-- 12 · FRAMEWORK -->
+    <section class="slide mid" data-title="Framework">
+      <div class="kicker an" style="--i:0">07 · How everyone gets there</div>
+      <h2 class="an" style="--i:1">A pragmatic approach<br><span class="grad">that actually works.</span></h2>
+      <div class="fw">
+        <div class="st an" style="--i:2"><div class="n">01</div><h3>Access</h3><p>Possehl GPT for everyone. Safe, governed and on-board. Other tools like Claude or Copilot where special needs call for them.</p></div>
+        <div class="st an" style="--i:3"><div class="n">02</div><h3>Empower</h3><p>Practical enablement. Demonstrate how to use it right on real daily tasks and encourage people to find out for themselves. Let your key users become AI ambassadors.</p></div>
+        <div class="st an" style="--i:4"><div class="n">03</div><h3>Build</h3><p>Everyone turns one routine task into a no-code skill or agent. One task per person is all it takes to start.</p></div>
+        <div class="st an" style="--i:5"><div class="n">04</div><h3>Share &amp; scale</h3><p>A shared library of skills, use cases and agents. Champions in every team, and every agent carries its “hours saved” number.</p></div>
+      </div>
+      <div class="fw-line an" style="--i:6">Not one lighthouse project. <b>An AI mindset with every employee.</b></div>
+    </section>
+
+    <!-- 13 · A YEAR FROM NOW -->
+    <section class="slide mid s-fut" data-title="A year from now">
+      <div class="kicker an" style="--i:0">08 · A year from now</div>
+      <h2 class="an" style="--i:1">In a year you will not give AI tasks.<br><span class="grad">You will give it goals.</span></h2>
+      <p class="lede an" style="--i:2">Today’s chatbots and single agents become personal digital colleagues. They know your working context and the company’s knowledge, they walk through the day with you and they stop waiting for the perfect prompt.</p>
+      <div class="fut">
+        <span class="tl-dot" aria-hidden="true"></span>
+        <div class="fc dim an" style="--i:3">
+          <div class="when">Today</div>
+          <h3>You prompt.</h3>
+          <p>You ask, the AI answers. One good question at a time, and you carry the thread.</p>
+          <div class="fc-viz" aria-hidden="true"><i></i><em>one question, one answer</em></div>
+        </div>
+        <div class="fc an" style="--i:4">
+          <div class="when">What this talk was about</div>
+          <h3>You assign tasks.</h3>
+          <p>Skills and agents take over what repeats. You describe the job once, the result comes back.</p>
+          <div class="fc-viz" aria-hidden="true"><i></i><i></i><i></i><em>a few skills, run on demand</em></div>
+        </div>
+        <div class="fc now an" style="--i:5">
+          <div class="when">A year from now</div>
+          <h3>You set goals.</h3>
+          <p>The AI picks the skills and agents it needs, does the work and comes back where your experience, creativity or decision is required.</p>
+          <div class="fc-viz" aria-hidden="true"><i class="goal"></i><i></i><i></i><i></i><i></i><i></i><i></i><em>one goal, many agents</em></div>
+        </div>
+      </div>
+      <div class="fw-line an" style="--i:7">Nobody will switch this on for you. <b>Look at your own work now, and you will be ready when it arrives.</b></div>
+    </section>
+
+    <!-- 14 · CTA / Q&A -->
+    <section class="slide s-cta" data-title="Q&A">
+      <div class="kicker an" style="--i:0">09 · And what today?</div>
+      <h2 class="an" style="--i:1">Start with <span class="grad">the routine tasks.</span><br>This week.</h2>
+      <p class="cta-sub an" style="--i:2">We have the framework, the on-board tools and the use cases. You bring one task you never want to do manually again. Let’s use the full potential of AI.</p>
+      <div class="cta-row an" style="--i:3">
+        <a class="btn p" href="https://possehl-digital.services" target="_blank" rel="noopener">possehl-digital.services ↗</a>
+        <span class="btn g">Possehl GPT</span>
+        <a class="btn g" href="https://dokko.ai" target="_blank" rel="noopener">dokko.ai ↗</a>
+        <a class="btn g" href="https://wissenstifter.ai" target="_blank" rel="noopener">wissenstifter.ai ↗</a>
+      </div>
+      <div class="cta-tasks an" style="--i:3" aria-hidden="true">
+        <div class="ct-label">Routine tasks · this week</div>
+        <div class="task" style="--t:0"><span class="chk"></span><span class="tx">Meeting minutes &amp; follow-up mail</span><em>~20 min</em></div>
+        <div class="task" style="--t:1"><span class="chk"></span><span class="tx">Weekly status report</span><em>~2 h</em></div>
+        <div class="task" style="--t:2"><span class="chk"></span><span class="tx">Month-end consolidation</span><em>~1.5 h</em></div>
+        <div class="task" style="--t:3"><span class="chk"></span><span class="tx">Summarize the mail thread</span><em>~10 min</em></div>
+        <div class="task" style="--t:4"><span class="chk"></span><span class="tx">Find the clause in the contract</span><em>~45 min</em></div>
+        <div class="task" style="--t:5"><span class="chk"></span><span class="tx">Dictate instead of typing</span><em>~3×</em></div>
+        <div class="ct-sum"><span>Hours back this week</span><b><span id="ctaHours">0</span> h</b></div>
+      </div>
+      <div class="qa" aria-hidden="true">Q&amp;A</div>
+    </section>
+
+    <!-- 15 · BACKUP: SKILLS & PROJECTS (nicht Teil des Ablaufs) -->
+    <section class="slide mid dense" data-title="Backup: Skills &amp; projects">
+      <div class="kicker an" style="--i:0">Backup · Build your own</div>
+      <h2 class="an" style="--i:1">Skills &amp; projects:<br><span class="grad">How to start today.</span></h2>
+      <p class="lede an" style="--i:2">It is not the model that makes the difference. It is the context you give it. Use these building blocks and you stop starting every chat from zero.</p>
+      <div class="tools">
+        <div class="tool an" style="--i:3">
+          <div class="tool-head">
+            <svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.3L20 10l-5.8 1.7L12 17l-2.2-5.3L4 10l5.8-1.7z"/></svg>
+            <h3>Claude</h3>
+          </div>
+          <div class="tf"><b><i>Projects</i>Context that stays</b><p>One project per topic: Store instructions and documents once. Every new chat starts with full context instead of from zero.</p></div>
+          <div class="tf"><b><i>Skills</i>Knowledge that works</b><p>Reusable playbooks, e.g. “our proposal template”. Claude pulls the right skill automatically as soon as the task fits.</p></div>
+          <div class="tf"><b><i>Memory</i>Context that grows</b><p>Claude remembers preferences and project state across chats. Less repetition, more continuity.</p></div>
+        </div>
+        <div class="tool gpt an" style="--i:4">
+          <div class="tool-head">
+            <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 1 1-3.1-6.3L21 5l-.6 3.4A8 8 0 0 1 21 12z"/><circle cx="9" cy="12" r=".8"/><circle cx="12.5" cy="12" r=".8"/><circle cx="16" cy="12" r=".8"/></svg>
+            <h3>ChatGPT</h3>
+          </div>
+          <div class="tf"><b><i>Projects</i>Everything in one place</b><p>Chats, files and instructions bundled per topic. Context is preserved across all conversations.</p></div>
+          <div class="tf"><b><i>Custom GPTs</i>Your own assistant</b><p>An assistant with fixed instructions and its own knowledge. Configure once, share with the whole team.</p></div>
+          <div class="tf"><b><i>Instructions</i>Set once</b><p>Store role, working style and tone centrally. It works in every chat. The cheapest quality jump there is.</p></div>
+        </div>
+      </div>
+      <div class="tools-bridge an" style="--i:5">
+        <b>And in Possehl GPT?</b>
+        <p>The same principle with on-board tools: Build skills and agents no-code, centrally managed, secure, with Claude &amp; GPT nodes.</p>
+      </div>
+      <div class="tools-bridge an" style="--i:6;background:rgba(63,211,224,.08);border-color:rgba(63,211,224,.4)">
+        <b>From skill to enterprise app?</b>
+        <p>Simplifier: Low-code apps with integration into your core systems (e.g. SAP), from our own portfolio. simplifier.io</p>
+      </div>
+    </section>
+
+  </div>
+  <div id="dots"></div>
+</div>
+
+<script>
+(function(){
+/* fixed 16:9 fit */
+function fitStage(){
+  const s=Math.min(innerWidth/1920, innerHeight/1080);
+  const r=document.documentElement;
+  r.style.setProperty("--uw",(19.2*s)+"px");
+  r.style.setProperty("--uh",(10.8*s)+"px");
+  r.style.setProperty("--pxs",s+"px");
+}
+addEventListener("resize",fitStage);fitStage();
+
+/* title headline: wrap every word so it can rise on its own */
+const h1=document.querySelector(".s-title h1");
+if(h1){let n=0;const tw=document.createTreeWalker(h1,NodeFilter.SHOW_TEXT);const nodes=[];while(tw.nextNode())nodes.push(tw.currentNode);
+  nodes.forEach(t=>{const frag=document.createDocumentFragment();
+    t.textContent.split(/(\s+)/).forEach(part=>{if(!part)return;
+      if(/^\s+$/.test(part)){frag.appendChild(document.createTextNode(part));return;}
+      const w=document.createElement("span");w.className="w";w.style.setProperty("--w",n++);
+      const i=document.createElement("span");i.textContent=part;w.appendChild(i);frag.appendChild(w);});
+    t.parentNode.replaceChild(frag,t);});}
+
+/* ── Title: living orbit system (canvas) ──
+   Hub "Daily work" in the centre, the tools orbit on three rings,
+   light packets travel tool -> hub and answer back, bright arcs sweep the rings. */
+(function(){
+  const cv=document.getElementById("orbit");if(!cv)return;
+  const ctx=cv.getContext("2d");const W=1000,H=1000,CX=500,CY=500;
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SKY="#35AAFF",CYAN="#3FD3E0",ROSE="#E8629C";
+  const rings=[{r:140,dash:[2,9],speed:.07,arc:1.0},{r:235,dash:null,speed:-.045,arc:1.4},{r:330,dash:[3,10],speed:.032,arc:1.15}];
+  const nodes=[
+    {label:"Possehl GPT",r:330,a:-1.1,w:.10,c:SKY,every:4.4,off:.8},
+    {label:"Claude",r:235,a:2.3,w:-.14,c:CYAN,every:5.3,off:2.0},
+    {label:"Copilot",r:330,a:1.7,w:.10,c:SKY,every:6.1,off:3.4},
+    {label:"Dokko",r:140,a:.6,w:.21,c:CYAN,every:4.9,off:1.4},
+    {label:"n8n",r:235,a:-2.2,w:-.14,c:ROSE,every:7.0,off:2.7}];
+  let dpr=1,s=1;
+  function size(){s=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pxs"))||1;
+    dpr=Math.min(devicePixelRatio||1,2);cv.width=Math.round(W*s*dpr);cv.height=Math.round(H*s*dpr);}
+  size();addEventListener("resize",size);
+  const packets=[];let last=null,hubFlash=0,t=0;
+  const slide=cv.closest(".slide");
+  function spawn(n,dir){packets.push({n,dir,p:0,dur:dir===1?1.35:1.1});}
+  function pos(n){const a=n.a+n.w*t;return [CX+Math.cos(a)*n.r,CY+Math.sin(a)*n.r,a];}
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function render(dt){
+    t+=dt;
+    nodes.forEach(n=>{if(n.next===undefined)n.next=n.off+1.2;if(t>=n.next){spawn(n,1);n.next+=n.every;}});
+    ctx.setTransform(s*dpr,0,0,s*dpr,0,0);ctx.clearRect(0,0,W,H);ctx.lineCap="round";
+    /* rings + sweeping arcs */
+    rings.forEach((rg,i)=>{
+      ctx.beginPath();ctx.arc(CX,CY,rg.r,0,Math.PI*2);ctx.strokeStyle="rgba(154,183,220,.17)";ctx.lineWidth=1.2;
+      ctx.setLineDash(rg.dash||[]);ctx.lineDashOffset=-t*rg.speed*220;ctx.stroke();ctx.setLineDash([]);
+      const a0=t*rg.speed*3.2+i*2.1,a1=a0+rg.arc;
+      const g=ctx.createLinearGradient(CX+Math.cos(a0)*rg.r,CY+Math.sin(a0)*rg.r,CX+Math.cos(a1)*rg.r,CY+Math.sin(a1)*rg.r);
+      g.addColorStop(0,"rgba(53,170,255,0)");g.addColorStop(1,"rgba(63,211,224,.95)");
+      ctx.beginPath();ctx.arc(CX,CY,rg.r,a0,a1);ctx.strokeStyle=g;ctx.lineWidth=2.2;ctx.stroke();
+      ctx.beginPath();ctx.arc(CX+Math.cos(a1)*rg.r,CY+Math.sin(a1)*rg.r,2.6,0,Math.PI*2);ctx.fillStyle="#fff";ctx.shadowColor=CYAN;ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;
+    });
+    /* spokes */
+    nodes.forEach(n=>{const[x,y]=pos(n);const busy=packets.some(p=>p.n===n);
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(CX,CY);ctx.strokeStyle=busy?"rgba(63,211,224,.38)":"rgba(154,183,220,.10)";ctx.lineWidth=busy?1.4:1;ctx.stroke();});
+    /* packets */
+    for(let i=packets.length-1;i>=0;i--){const p=packets[i];p.p+=dt/p.dur;
+      if(p.p>=1){packets.splice(i,1);if(p.dir===1){hubFlash=1;const n=p.n;setTimeout(()=>spawn(n,-1),260);}continue;}
+      const[x,y]=pos(p.n);const q=p.p,e=q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2,k=p.dir===1?e:1-e;
+      const px=x+(CX-x)*k,py=y+(CY-y)*k;
+      ctx.beginPath();ctx.arc(px,py,p.dir===1?3.4:2.8,0,Math.PI*2);ctx.fillStyle=p.dir===1?"#fff":CYAN;
+      ctx.shadowColor=p.dir===1?SKY:CYAN;ctx.shadowBlur=16;ctx.fill();ctx.shadowBlur=0;
+      /* short tail */
+      const tk=Math.max(0,k-(p.dir===1?.08:-.08)*1),tx=x+(CX-x)*tk,ty=y+(CY-y)*tk;
+      ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(px,py);ctx.strokeStyle=p.dir===1?"rgba(255,255,255,.45)":"rgba(63,211,224,.45)";ctx.lineWidth=2;ctx.stroke();}
+    /* hub */
+    hubFlash=Math.max(0,hubFlash-dt*1.7);
+    const pulse=.5+.5*Math.sin(t*2.1);
+    const g=ctx.createRadialGradient(CX,CY,0,CX,CY,85+hubFlash*40);
+    g.addColorStop(0,"rgba(63,211,224,"+(.30+hubFlash*.40)+")");g.addColorStop(1,"rgba(63,211,224,0)");
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(CX,CY,140,0,Math.PI*2);ctx.fill();
+    for(let k=0;k<2;k++){const ph=((t/2.8)+k*.5)%1;ctx.beginPath();ctx.arc(CX,CY,20+ph*105,0,Math.PI*2);
+      ctx.strokeStyle="rgba(63,211,224,"+((1-ph)*.42)+")";ctx.lineWidth=1.5;ctx.stroke();}
+    ctx.beginPath();ctx.arc(CX,CY,13+pulse*2+hubFlash*5,0,Math.PI*2);ctx.fillStyle="#fff";ctx.shadowColor=CYAN;ctx.shadowBlur=26;ctx.fill();ctx.shadowBlur=0;
+    ctx.font='600 12px "Space Grotesk",sans-serif';ctx.textAlign="center";ctx.textBaseline="top";ctx.fillStyle="rgba(169,186,211,.95)";
+    try{ctx.letterSpacing="2.5px";}catch(e){}
+    ctx.fillText("DAILY WORK",CX,CY+32);
+    try{ctx.letterSpacing="0px";}catch(e){}
+    /* nodes + upright label chips */
+    nodes.forEach(n=>{const[x,y,a]=pos(n);
+      ctx.beginPath();ctx.arc(x,y,6.5,0,Math.PI*2);ctx.fillStyle=n.c;ctx.shadowColor=n.c;ctx.shadowBlur=18;ctx.fill();ctx.shadowBlur=0;
+      ctx.beginPath();ctx.arc(x,y,11,0,Math.PI*2);ctx.strokeStyle=n.c;ctx.globalAlpha=.35;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
+      ctx.font='600 15px "Space Grotesk",sans-serif';const tw=ctx.measureText(n.label).width;
+      const right=Math.cos(a)>=0&&x<CX+180;const lx=x+(right?24:-24-tw),ly=y+Math.sin(a)*16;
+      ctx.textAlign="left";ctx.textBaseline="middle";
+      roundRect(lx-10,ly-13,tw+20,26,13);ctx.fillStyle="rgba(11,21,38,.82)";ctx.fill();ctx.strokeStyle="rgba(154,183,220,.30)";ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle="#EAF1F9";ctx.fillText(n.label,lx,ly);});
+  }
+  if(reduce){render(4);return;}
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(!slide.classList.contains("active")||document.hidden){last=null;return;}
+    if(last===null)last=now;
+    const dt=Math.min(.05,(now-last)/1000);last=now;render(dt);
+  }
+  requestAnimationFrame(frame);
+})();
+
+const deck=document.getElementById("deck");
+const slides=[...document.querySelectorAll(".slide")];
+const dotsEl=document.getElementById("dots");
+let cur=-1;
+
+slides.forEach((s,i)=>{
+  const b=document.createElement("button");
+  b.setAttribute("aria-label",s.dataset.title||("Slide "+(i+1)));
+  b.addEventListener("click",()=>go(i));
+  dotsEl.appendChild(b);
+});
+const dots=[...dotsEl.children];
+
+function go(n){
+  n=Math.max(0,Math.min(slides.length-1,n));
+  if(n===cur)return;
+  cur=n;
+  deck.style.transform=`translate3d(calc(${-n*100} * var(--uw)),0,0)`;
+  slides.forEach((s,i)=>{
+    s.classList.toggle("active",i===n);
+    if(i!==n)s.querySelectorAll("[data-count]").forEach(el=>{el.dataset.done="";el.textContent="0";});
+  });
+  dots.forEach((d,i)=>d.classList.toggle("on",i===n));
+  location.hash="#/"+(n+1);
+  slides[n].querySelectorAll("[data-count]").forEach(el=>{
+    if(el.dataset.done==="1")return;el.dataset.done="1";
+    const to=+el.dataset.count;
+    const t0=performance.now(),dur=1500;
+    (function tick(t){
+      const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+      el.textContent=Math.round(to*e).toLocaleString("en-US");
+      if(p<1)requestAnimationFrame(tick);
+    })(t0);
+  });
+}
+function next(){go(cur+1)}
+function prev(){go(cur-1)}
+
+addEventListener("keydown",e=>{
+  if(["ArrowRight","ArrowDown","PageDown"," ","Spacebar"].includes(e.key)){e.preventDefault();next();}
+  if(["ArrowLeft","ArrowUp","PageUp"].includes(e.key)){e.preventDefault();prev();}
+  if(e.key==="Home")go(0);
+  if(e.key==="End")go(slides.length-1);
+  if(e.key==="f"||e.key==="F"){
+    if(document.fullscreenElement)document.exitFullscreen();
+    else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{});
+  }
+});
+
+/* KPI dot grid: 100 dots, one per employee */
+const hg=document.getElementById("hgDots");
+if(hg)for(let d=0;d<100;d++){const i=document.createElement("i");i.style.setProperty("--d",d);hg.appendChild(i);}
+
+/* presentation mode: pointer disappears after 2.5s without movement */
+let idleT;
+function wake(){document.body.classList.remove("idle");clearTimeout(idleT);idleT=setTimeout(()=>document.body.classList.add("idle"),2500);}
+addEventListener("mousemove",wake);addEventListener("keydown",wake);wake();
+
+/* CTA: hours counter follows the task loop (6 tasks, 14s cycle, tick at 1.2s + t*1.4s) */
+(function(){
+  const el=document.getElementById("ctaHours");if(!el)return;
+  const vals=[0.35,2,1.5,0.2,0.75,1];
+  const cta=el.closest(".slide");let t0=null;
+  function tick(now){
+    if(!cta.classList.contains("active")){t0=null;el.textContent="0";requestAnimationFrame(tick);return;}
+    if(t0===null)t0=now;
+    const s=((now-t0)/1000)%14;
+    let sum=0;vals.forEach((v,i)=>{if(s>=1.2+i*1.4&&s<1.2+i*1.4+10.5)sum+=v;});
+    if(s>=1.2+5*1.4+10.5||s<1.2)sum=0;
+    el.textContent=(Math.round(sum*10)/10).toLocaleString("en-US");
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+document.getElementById("homeLogo").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();go(0);});
+document.getElementById("stage").addEventListener("click",e=>{
+  if(e.target.closest("a,button"))return;
+  next();
+});
+
+const m=location.hash.match(/#\/(\d+)/);
+go(m?+m[1]-1:0);
+})();
+</script>
+</body>
+</html>
